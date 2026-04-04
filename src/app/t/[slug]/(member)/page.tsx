@@ -7,6 +7,8 @@ import { CalendarPlus } from "lucide-react";
 import { getTenant } from "@/lib/tenant";
 import { notFound } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
 const statusMap: Record<string, { label: string; color: string; bg: string }> = {
   pending:    { label: "待確認", color: "#92400E", bg: "#FEF3C7" },
   confirmed:  { label: "已確認", color: "#065F46", bg: "#D1FAE5" },

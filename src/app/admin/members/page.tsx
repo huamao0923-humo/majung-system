@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/date";
 import BlacklistToggle from "./blacklist-toggle";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminMembersPage({
   searchParams,
 }: {

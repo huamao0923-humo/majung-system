@@ -5,6 +5,8 @@ import { Users, CalendarCheck, DollarSign, Clock } from "lucide-react";
 import { getTenant } from "@/lib/tenant";
 import { notFound } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TenantAdminDashboard({
   params,
 }: {

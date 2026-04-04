@@ -4,6 +4,8 @@ import { formatDate, startOfDay, endOfDay } from "@/lib/date";
 import { Users, CalendarCheck, DollarSign, Clock } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboard() {
   const session = await auth();
   const today = new Date();

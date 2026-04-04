@@ -5,6 +5,8 @@ import { getTenant } from "@/lib/tenant";
 import { notFound } from "next/navigation";
 import TenantReservationActions from "./actions";
 
+export const dynamic = 'force-dynamic';
+
 const statusMap: Record<string, { label: string; bg: string; text: string }> = {
   pending:    { label: "待確認", bg: "#FEF9C3", text: "#854D0E" },
   confirmed:  { label: "已確認", bg: "#DCFCE7", text: "#166534" },

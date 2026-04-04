@@ -4,6 +4,8 @@ import { getTenant } from "@/lib/tenant";
 import { notFound } from "next/navigation";
 import TenantPaymentForm from "./payment-form";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TenantPaymentPage({
   params,
   searchParams,

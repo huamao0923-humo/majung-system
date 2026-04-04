@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { startOfDay, endOfDay, formatDate } from "@/lib/date";
 import CheckinButton from "./checkin-button";
 
+export const dynamic = 'force-dynamic';
+
 export default async function CheckinPage() {
   const today = new Date();
 

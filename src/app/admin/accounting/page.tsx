@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, formatDateTime, startOfDay, endOfDay, startOfMonth, endOfMonth } from "@/lib/date";
 import ExportButton from "./export-button";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AccountingPage({
   searchParams,
 }: {

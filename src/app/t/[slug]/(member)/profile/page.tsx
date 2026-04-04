@@ -7,6 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getTenant } from "@/lib/tenant";
 import SignOutButton from "./signout-button";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TenantProfilePage({
   params,
 }: {

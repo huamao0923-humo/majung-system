@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { formatDate, startOfDay, endOfDay } from "@/lib/date";
 import PaymentForm from "./payment-form";
 
+export const dynamic = 'force-dynamic';
+
 export default async function PaymentPage({
   searchParams,
 }: {

@@ -3,6 +3,8 @@ import { requireSuperAdmin } from "@/lib/superadmin-auth";
 import { redirect } from "next/navigation";
 import { Building2, Users, CalendarCheck, DollarSign } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 export default async function SuperAdminDashboard() {
   const { error } = await requireSuperAdmin();
   if (error) redirect("/superadmin/login");

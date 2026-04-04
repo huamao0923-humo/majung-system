@@ -3,6 +3,8 @@ import TablesSection from "./tables-section";
 import TimeSlotsSection from "./timeslots-section";
 import AnnouncementsSection from "./announcements-section";
 
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
   const [floors, timeSlots, announcements] = await Promise.all([
     prisma.floor.findMany({

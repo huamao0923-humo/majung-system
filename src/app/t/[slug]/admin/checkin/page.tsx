@@ -4,6 +4,8 @@ import { getTenant } from "@/lib/tenant";
 import { notFound } from "next/navigation";
 import TenantCheckinButton from "./checkin-button";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TenantCheckinPage({
   params,
 }: {

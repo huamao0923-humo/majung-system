@@ -9,6 +9,8 @@ import BookingRulesSection from "./booking-rules-section";
 import LineSettingsSection from "./line-settings-section";
 import { CalendarX } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TenantSettingsPage({
   params,
 }: {
