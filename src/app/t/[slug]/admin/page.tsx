@@ -30,9 +30,9 @@ export default async function TenantAdminDashboard({
     prisma.reservation.count({ where: { tenantId: tenant.id, status: "pending" } }),
     prisma.payment.aggregate({
       where: {
-        tenantId: tenant.id,
         status: "paid",
         paidAt: { gte: startOfDay(today), lte: endOfDay(today) },
+        reservation: { tenantId: tenant.id },
       },
       _sum: { amount: true },
     }),
