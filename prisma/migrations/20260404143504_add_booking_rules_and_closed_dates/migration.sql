@@ -4,7 +4,7 @@ CREATE TABLE "ClosedDate" (
     "tenantId" TEXT NOT NULL,
     "date" TEXT NOT NULL,
     "reason" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "ClosedDate_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -24,7 +24,7 @@ CREATE TABLE "new_Tenant" (
     "cancelDeadlineHours" INTEGER NOT NULL DEFAULT 2,
     "minAdvanceHours" INTEGER NOT NULL DEFAULT 1,
     "maxAdvanceDays" INTEGER NOT NULL DEFAULT 14,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO "new_Tenant" ("createdAt", "id", "isActive", "lineChannelId", "lineChannelSecret", "lineLiffId", "lineMessagingToken", "name", "plan", "slug") SELECT "createdAt", "id", "isActive", "lineChannelId", "lineChannelSecret", "lineLiffId", "lineMessagingToken", "name", "plan", "slug" FROM "Tenant";
 DROP TABLE "Tenant";

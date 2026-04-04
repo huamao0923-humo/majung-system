@@ -15,7 +15,7 @@ CREATE TABLE "SuperAdmin" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "username" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -29,7 +29,7 @@ CREATE TABLE "Tenant" (
     "lineLiffId" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "plan" TEXT NOT NULL DEFAULT 'basic',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -50,8 +50,8 @@ CREATE TABLE "new_Announcement" (
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "Announcement_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 INSERT INTO "new_Announcement" ("content", "createdAt", "id", "isActive", "title", "updatedAt") SELECT "content", "createdAt", "id", "isActive", "title", "updatedAt" FROM "Announcement";
@@ -63,10 +63,10 @@ CREATE TABLE "new_Payment" (
     "amount" INTEGER NOT NULL,
     "method" TEXT,
     "status" TEXT NOT NULL DEFAULT 'unpaid',
-    "paidAt" DATETIME,
+    "paidAt" TIMESTAMP(3),
     "confirmedBy" TEXT,
     "note" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Payment_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 INSERT INTO "new_Payment" ("amount", "confirmedBy", "createdAt", "id", "method", "note", "paidAt", "reservationId", "status") SELECT "amount", "confirmedBy", "createdAt", "id", "method", "note", "paidAt", "reservationId", "status" FROM "Payment";
@@ -79,13 +79,13 @@ CREATE TABLE "new_Reservation" (
     "userId" TEXT NOT NULL,
     "tableId" TEXT NOT NULL,
     "timeSlotId" TEXT NOT NULL,
-    "date" DATETIME NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
     "guestCount" INTEGER NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "note" TEXT,
-    "checkedInAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "checkedInAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "Reservation_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Reservation_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "Reservation_tableId_fkey" FOREIGN KEY ("tableId") REFERENCES "Table" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -136,7 +136,7 @@ CREATE TABLE "new_User" (
     "role" TEXT NOT NULL DEFAULT 'member',
     "isBlacklisted" BOOLEAN NOT NULL DEFAULT false,
     "noShowCount" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "User_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 INSERT INTO "new_User" ("createdAt", "displayName", "id", "isBlacklisted", "lineUserId", "noShowCount", "phone", "pictureUrl", "role") SELECT "createdAt", "displayName", "id", "isBlacklisted", "lineUserId", "noShowCount", "phone", "pictureUrl", "role" FROM "User";
@@ -148,10 +148,10 @@ CREATE TABLE "new_WaitlistEntry" (
     "tenantId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "timeSlotId" TEXT NOT NULL,
-    "date" DATETIME NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL,
     "guestCount" INTEGER NOT NULL,
     "notified" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "WaitlistEntry_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "WaitlistEntry_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "WaitlistEntry_timeSlotId_fkey" FOREIGN KEY ("timeSlotId") REFERENCES "TimeSlot" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
