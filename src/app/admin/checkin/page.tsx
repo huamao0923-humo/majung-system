@@ -1,0 +1,164 @@
+import { prisma } from "@/lib/prisma";
+import { startOfDay, endOfDay, formatDate } from "@/lib/date";
+import CheckinButton from "./checkin-button";
+
+export default async function CheckinPage() {
+  const today = new Date();
+
+  const reservations = await prisma.reservation.findMany({
+    where: {
+      date: { gte: startOfDay(today), lte: endOfDay(today) },
+      status: { in: ["confirmed", "checked_in"] },
+    },
+    include: {
+      user: { select: { displayName: true, phone: true, pictureUrl: true } },
+      table: true,
+      timeSlot: true,
+    },
+    orderBy: [{ timeSlot: { order: "asc" } }, { status: "asc" }],
+  });
+
+  const confirmed = reservations.filter((r) => r.status === "confirmed");
+  const checkedIn = reservations.filter((r) => r.status === "checked_in");
+
+  const pct = reservations.length > 0
+    ? Math.round((checkedIn.length / reservations.length) * 100) : 0;
+  const stage =
+    pct === 100 ? { label: "滿貫大胡！", color: "#D4AF37" } :
+    pct >= 75   ? { label: "胡牌！",     color: "#166534" } :
+    pct >= 50   ? { label: "聽牌！",     color: "#8B0000" } :
+    pct >= 25   ? { label: "南風正盛",   color: "#854D0E" } :
+                  { label: "東風剛起",   color: "#6B7280" };
+
+  return (
+    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: "#1A0500" }}>入場確認</h1>
+          <p className="text-sm mt-1" style={{ color: "rgba(139,0,0,0.5)" }}>
+            {formatDate(today)} · 等候 {confirmed.length} 組 · 已入場 {checkedIn.length} 組
+          </p>
+        </div>
+        {/* 裝飾牌 */}
+        <div className="flex gap-1 opacity-20 select-none">
+          {["東", "南", "西"].map((c) => (
+            <div
+              key={c}
+              className="w-6 h-8 rounded-sm flex items-center justify-center font-bold text-xs"
+              style={{
+                background: "linear-gradient(150deg, #fff, #f0ead8)",
+                border: "1.5px solid #8B0000",
+                color: "#8B0000",
+                boxShadow: "1px 2px 3px rgba(0,0,0,0.2)",
+                fontFamily: "serif",
+              }}
+            >
+              {c}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      {reservations.length > 0 && (
+        <div className="rounded-2xl p-4 shadow-sm" style={{ background: "white", border: "1px solid #D4AF3720" }}>
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="font-semibold" style={{ color: stage.color }}>{stage.label}</span>
+            <span style={{ color: "rgba(139,0,0,0.6)" }}>{checkedIn.length} / {reservations.length} · {pct}%</span>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: "#FDF6E3" }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${pct}%`,
+                background: pct === 100
+                  ? "linear-gradient(90deg, #D4AF37, #F5D76E)"
+                  : "linear-gradient(90deg, #8B0000, #D4AF37)",
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Waiting to check in */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full" style={{ background: "#D4AF37" }} />
+          <h2 className="text-sm font-semibold uppercase" style={{ color: "rgba(139,0,0,0.6)" }}>
+            等候入場 ({confirmed.length})
+          </h2>
+        </div>
+        {confirmed.length === 0 ? (
+          <div
+            className="rounded-2xl p-8 text-center text-sm"
+            style={{ background: "white", border: "1px solid #D4AF3720", color: "rgba(139,0,0,0.3)" }}
+          >
+            目前無等候入場
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {confirmed.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-2xl p-5 flex items-center justify-between gap-4 shadow-sm"
+                style={{ background: "white", border: "1px solid #D4AF3720" }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-base flex-shrink-0"
+                    style={{ background: "linear-gradient(135deg, rgba(139,0,0,0.12), rgba(212,175,55,0.15))", color: "#8B0000" }}
+                  >
+                    {r.user.displayName.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-semibold" style={{ color: "#1A0500" }}>{r.user.displayName}</p>
+                    <p className="text-sm" style={{ color: "rgba(139,0,0,0.55)" }}>
+                      {r.table.name} · {r.timeSlot.name} · {r.guestCount}人
+                    </p>
+                    {r.user.phone && (
+                      <p className="text-xs" style={{ color: "rgba(139,0,0,0.4)" }}>{r.user.phone}</p>
+                    )}
+                  </div>
+                </div>
+                <CheckinButton reservationId={r.id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Already checked in */}
+      {checkedIn.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-blue-400" />
+            <h2 className="text-sm font-semibold uppercase" style={{ color: "rgba(139,0,0,0.5)" }}>
+              已入場 ({checkedIn.length})
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {checkedIn.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-xl px-4 py-3 flex items-center justify-between opacity-60"
+                style={{ background: "white", border: "1px solid #D4AF3715" }}
+              >
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "#1A0500" }}>{r.user.displayName}</p>
+                  <p className="text-xs" style={{ color: "rgba(139,0,0,0.5)" }}>{r.table.name} · {r.timeSlot.name}</p>
+                </div>
+                <span
+                  className="text-xs px-2.5 py-1 rounded-full font-medium"
+                  style={{ background: "#DBEAFE", color: "#1E40AF" }}
+                >
+                  已入場
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

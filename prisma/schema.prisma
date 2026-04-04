@@ -1,13 +1,188 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── 超級管理員（不屬於任何租戶）───────────────────────────────
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+// ─── 租戶（每間麻將館）──────────────────────────────────────────
+model Tenant {
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
+  lineChannelId      String?
+  lineChannelSecret  String?
+  lineMessagingToken String?
+  lineLiffId         String?
+  isActive              Boolean  @default(true)
+  plan                  String   @default("basic")
+  // 訂位規則設定
+  cancelDeadlineHours   Int      @default(2)   // 取消截止（場次前幾小時）
+  minAdvanceHours       Int      @default(1)   // 最少提前幾小時訂位
+  maxAdvanceDays        Int      @default(14)  // 最多提前幾天訂位
+  createdAt             DateTime @default(now())
+
+  users           User[]
+  floors          Floor[]
+  tables          Table[]
+  timeSlots       TimeSlot[]
+  announcements   Announcement[]
+  reservations    Reservation[]
+  waitlistEntries WaitlistEntry[]
+  closedDates     ClosedDate[]
+}
+
+// ─── 休息日管理──────────────────────────────────────────────────
+model ClosedDate {
+  id        String   @id @default(cuid())
+  tenantId  String
+  date      String   // YYYY-MM-DD
+  reason    String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, date])
+}
+
+// ─── 樓層（每個租戶可有多層）──────────────────────────────────
+model Floor {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  order    Int    @default(0)
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tables Table[]
+}
+
+// ─── 用戶（LINE 登入，以 tenantId+lineUserId 唯一識別）──────────
+model User {
+  id            String   @id @default(cuid())
+  tenantId      String
+  lineUserId    String
+  displayName   String
+  pictureUrl    String?
+  phone         String?
+  role          String   @default("member")
+  isBlacklisted Boolean  @default(false)
+  noShowCount   Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations    Reservation[]
+  waitlistEntries WaitlistEntry[]
+
+  @@unique([tenantId, lineUserId])
+}
+
+// ─── 桌位（含平面圖位置）────────────────────────────────────────
+model Table {
+  id          String  @id @default(cuid())
+  tenantId    String
+  floorId     String
+  name        String
+  capacity    Int     @default(4)
+  posX        Float   @default(10)
+  posY        Float   @default(10)
+  tableWidth  Float   @default(22)
+  tableHeight Float   @default(14)
+  isActive    Boolean @default(true)
+  order       Int     @default(0)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  floor        Floor         @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+}
+
+// ─── 時段──────────────────────────────────────────────────────
+model TimeSlot {
+  id        String  @id @default(cuid())
+  tenantId  String
+  name      String
+  startTime String
+  endTime   String
+  price     Int     @default(0)
+  isActive  Boolean @default(true)
+  order     Int     @default(0)
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations    Reservation[]
+  waitlistEntries WaitlistEntry[]
+}
+
+// ─── 預約──────────────────────────────────────────────────────
+model Reservation {
+  id          String    @id @default(cuid())
+  tenantId    String
+  userId      String
+  tableId     String
+  timeSlotId  String
+  date        DateTime
+  guestCount  Int
+  status      String    @default("pending")
+  note        String?
+  checkedInAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+  table    Table    @relation(fields: [tableId], references: [id])
+  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id])
+  payment  Payment?
+}
+
+// ─── 付款──────────────────────────────────────────────────────
+model Payment {
+  id            String    @id @default(cuid())
+  reservationId String    @unique
+  amount        Int
+  method        String?
+  status        String    @default("unpaid")
+  paidAt        DateTime?
+  confirmedBy   String?
+  note          String?
+  createdAt     DateTime  @default(now())
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+}
+
+// ─── 候補名單────────────────────────────────────────────────────
+model WaitlistEntry {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String
+  timeSlotId String
+  date       DateTime
+  guestCount Int
+  notified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id])
+}
+
+// ─── 公告──────────────────────────────────────────────────────
+model Announcement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  title     String
+  content   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

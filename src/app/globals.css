@@ -7,22 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  --font-sans: var(--font-noto);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -35,8 +20,6 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --radius-sm: calc(var(--radius) * 0.6);
@@ -44,87 +27,208 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* 金紅主題色 */
+  --color-mahjong-red: #8B0000;
+  --color-mahjong-red-light: #A31515;
+  --color-mahjong-gold: #D4AF37;
+  --color-mahjong-gold-light: #F0D060;
+  --color-mahjong-dark: #1A0A00;
+  --color-mahjong-cream: #FDF6E3;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #FDF6E3;
+  --foreground: #1A0A00;
+  --card: #FFFFFF;
+  --card-foreground: #1A0A00;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A0A00;
+  --primary: #8B0000;
+  --primary-foreground: #F0D060;
+  --secondary: #F5ECD7;
+  --secondary-foreground: #1A0A00;
+  --muted: #F5ECD7;
+  --muted-foreground: #6B4C2A;
+  --accent: #D4AF37;
+  --accent-foreground: #1A0A00;
+  --destructive: #CC0000;
+  --border: #D4AF3740;
+  --input: #D4AF3730;
+  --ring: #D4AF37;
+  --radius: 0.75rem;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+body {
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+/* 金色裝飾線 */
+.gold-divider {
+  border-color: #D4AF37;
+  opacity: 0.6;
 }
+
+/* 傳統中式紋樣背景 */
+.pattern-bg {
+  background-image: 
+    radial-gradient(circle at 25% 25%, #D4AF3708 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, #8B000008 0%, transparent 50%);
+}
+
+/* 牌型裝飾 */
+.mahjong-card {
+  background: white;
+  border: 1px solid #D4AF3740;
+  border-radius: 12px;
+  box-shadow: 0 2px 16px #D4AF3715, 0 1px 4px #8B000010;
+}
+
+.mahjong-card:hover {
+  box-shadow: 0 4px 24px #D4AF3725, 0 2px 8px #8B000015;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+/* 後台側邊欄 */
+.admin-sidebar {
+  background: linear-gradient(180deg, #1A0500 0%, #0D0200 100%);
+  border-right: 1px solid #D4AF3730;
+}
+
+/* 金色按鈕 */
+.btn-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #B8962E 100%);
+  color: #1A0A00;
+  font-weight: 600;
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #F0D060 0%, #D4AF37 100%);
+}
+
+/* 深紅按鈕 */
+.btn-red {
+  background: linear-gradient(135deg, #8B0000 0%, #6B0000 100%);
+  color: #F0D060;
+}
+
+.btn-red:hover {
+  background: linear-gradient(135deg, #A31515 0%, #8B0000 100%);
+}
+
+/* 狀態徽章 */
+.status-pending { background: #FEF3C7; color: #92400E; border: 1px solid #F59E0B40; }
+.status-confirmed { background: #D1FAE5; color: #065F46; border: 1px solid #10B98140; }
+.status-checked-in { background: #DBEAFE; color: #1E40AF; border: 1px solid #3B82F640; }
+.status-completed { background: #F3F4F6; color: #374151; border: 1px solid #9CA3AF40; }
+.status-cancelled { background: #FEE2E2; color: #991B1B; border: 1px solid #EF444440; }
+
+/* ===== 麻將牌樣式 ===== */
+.mahjong-tile {
+  background: linear-gradient(150deg, #FFFFFF 0%, #F5F0E6 100%);
+  border: 2px solid #1B4D1B;
+  border-radius: 7px;
+  box-shadow:
+    3px 5px 8px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 1px 0 0 rgba(255,255,255,0.6);
+  position: relative;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+/* 牌面內框線 */
+.mahjong-tile::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(27,77,27,0.22);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.mahjong-tile:hover:not(.tile-unavailable) {
+  transform: translateY(-2px);
+  box-shadow:
+    4px 8px 12px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.95),
+    inset 1px 0 0 rgba(255,255,255,0.6);
+}
+
+.mahjong-tile.tile-selected {
+  background: linear-gradient(150deg, #8B0000 0%, #5C0000 100%);
+  border-color: #D4AF37;
+  box-shadow:
+    3px 5px 10px rgba(139,0,0,0.45),
+    0 0 0 1px rgba(212,175,55,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+.mahjong-tile.tile-selected::before {
+  border-color: rgba(212,175,55,0.35);
+}
+
+.mahjong-tile.tile-unavailable {
+  background: linear-gradient(150deg, #C8C4B8 0%, #B0ADA4 100%);
+  border-color: #8A8880;
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: 1px 2px 4px rgba(0,0,0,0.18);
+}
+
+/* 麻將桌綠色氈布 */
+.mahjong-felt {
+  background-color: #1E4620;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 12px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+}
+
+/* 傳統中式裝飾分隔線 */
+.chinese-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(212,175,55,0.55);
+  user-select: none;
+}
+.chinese-divider::before,
+.chinese-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,55,0.45), transparent);
+}
+
+/* 花色裝飾字 (萬/筒/條) */
+.suit-char {
+  font-family: "Noto Serif TC", serif;
+  font-weight: 700;
+  font-size: 11px;
+  opacity: 0.18;
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 捲軸美化 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #F5ECD7; }
+::-webkit-scrollbar-thumb { background: #D4AF3780; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
