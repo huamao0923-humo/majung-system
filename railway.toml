@@ -1,9 +1,6 @@
 [build]
 builder = "nixpacks"
 
-[build.nixpacksPlan.phases.setup]
-nixPkgs = ["nodejs_24"]
-
 [deploy]
 startCommand = "npm run db:migrate && npm start"
 healthcheckPath = "/"
