@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
 
       const created = await tx.reservation.create({
         data: {
+          tenantId: session.user.tenantId,
           userId: session.user.id,
           tableId,
           timeSlotId,

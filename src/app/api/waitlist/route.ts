@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
 
   const entry = await prisma.waitlistEntry.create({
     data: {
+      tenantId: session.user.tenantId,
       userId: session.user.id,
       timeSlotId,
       date: d,

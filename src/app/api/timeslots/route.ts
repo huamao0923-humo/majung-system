@@ -16,7 +16,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await req.json();
-  const slot = await prisma.timeSlot.create({ data: body });
+  const { name, startTime, endTime, price, order, isActive } = body;
+  const slot = await prisma.timeSlot.create({
+    data: {
+      tenantId: session.user.tenantId,
+      name,
+      startTime,
+      endTime,
+      price: price ?? 0,
+      order: order ?? 0,
+      isActive: isActive ?? true,
+    },
+  });
   return NextResponse.json(slot, { status: 201 });
 }
 

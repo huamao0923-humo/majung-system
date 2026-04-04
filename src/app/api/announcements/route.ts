@@ -16,7 +16,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = await req.json();
-  const item = await prisma.announcement.create({ data: body });
+  const { title, content, isActive } = body;
+  const item = await prisma.announcement.create({
+    data: {
+      tenantId: session.user.tenantId,
+      title,
+      content,
+      isActive: isActive ?? true,
+    },
+  });
   return NextResponse.json(item, { status: 201 });
 }
 
