@@ -52,6 +52,18 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // ── 舊版 /admin/* 路由 → 導向正確位置 ────────────────────
+  if (pathname.startsWith("/admin")) {
+    if (!token) return NextResponse.redirect(new URL("/admin-login", req.url));
+    if (token.role === "superadmin") {
+      return NextResponse.redirect(new URL("/superadmin/tenants", req.url));
+    }
+    if (token.role === "admin" && token.tenantSlug) {
+      return NextResponse.redirect(new URL(`/t/${token.tenantSlug as string}/admin`, req.url));
+    }
+    return NextResponse.redirect(new URL("/admin-login", req.url));
+  }
+
   // ── 租戶路由 /t/[slug]/... ────────────────────────────────
   const tenantMatch = pathname.match(/^\/t\/([^/]+)(\/.*)?$/);
   if (tenantMatch) {
@@ -103,5 +115,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/superadmin/:path*", "/t/:path*", "/api/t/:path*"],
+  matcher: ["/superadmin/:path*", "/admin/:path*", "/t/:path*", "/api/t/:path*"],
 };
