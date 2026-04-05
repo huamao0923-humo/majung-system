@@ -75,6 +75,8 @@ model User {
   pictureUrl    String?
   phone         String?
   role          String   @default("member")
+  username      String?  @unique
+  passwordHash  String?
   isBlacklisted Boolean  @default(false)
   noShowCount   Int      @default(0)
   createdAt     DateTime @default(now())

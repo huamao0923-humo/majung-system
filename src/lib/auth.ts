@@ -26,6 +26,33 @@ export const authConfig: NextAuthConfig = {
         return { id: admin.id, name: admin.username, email: null, role: "superadmin" } as never;
       },
     }),
+    // ── 租戶管理員 credentials login ─────────────────────────────
+    Credentials({
+      id: "tenant-admin",
+      name: "TenantAdmin",
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.username || !credentials?.password) return null;
+        const user = await prisma.user.findUnique({
+          where: { username: credentials.username as string },
+          include: { tenant: { select: { slug: true, isActive: true } } },
+        });
+        if (!user || user.role !== "admin" || !user.passwordHash) return null;
+        if (!user.tenant.isActive) return null;
+        const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+        if (!valid) return null;
+        return {
+          id: user.id,
+          name: user.displayName,
+          tenantId: user.tenantId,
+          tenantSlug: user.tenant.slug,
+          role: "admin",
+        } as never;
+      },
+    }),
     // ── LINE OAuth ────────────────────────────────────────────────
     {
       id: "line",
@@ -99,6 +126,10 @@ export const authConfig: NextAuthConfig = {
         session.user.role = "superadmin";
         session.user.id = token.userId as string;
       }
+      // tenant-admin session（credentials 登入，tenantSlug 存在 token）
+      if (token.tenantSlug) {
+        session.user.tenantSlug = token.tenantSlug as string;
+      }
       return session;
     },
 
@@ -107,6 +138,14 @@ export const authConfig: NextAuthConfig = {
       if (user && (user as never as { role: string }).role === "superadmin") {
         token.role = "superadmin";
         token.userId = user.id;
+        return token;
+      }
+      // tenant-admin credentials login
+      if (user && (user as never as { role: string }).role === "admin" && (user as never as { tenantSlug?: string }).tenantSlug) {
+        token.role = "admin";
+        token.userId = user.id;
+        token.tenantId = (user as never as { tenantId: string }).tenantId;
+        token.tenantSlug = (user as never as { tenantSlug: string }).tenantSlug;
         return token;
       }
 
@@ -169,6 +208,7 @@ declare module "next-auth" {
       role: string;
       lineUserId: string;
       tenantId: string;
+      tenantSlug?: string;
       phone?: string;
     };
   }

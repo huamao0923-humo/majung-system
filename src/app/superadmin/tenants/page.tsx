@@ -3,6 +3,7 @@ import { requireSuperAdmin } from "@/lib/superadmin-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import SetAdminModal from "./set-admin-modal";
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,11 @@ export default async function SuperAdminTenantsPage() {
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { users: true, reservations: true } },
+      users: {
+        where: { role: "admin" },
+        select: { id: true, username: true, displayName: true },
+        take: 1,
+      },
     },
   });
 
@@ -66,9 +72,9 @@ export default async function SuperAdminTenantsPage() {
           <div className="col-span-2">Slug</div>
           <div className="col-span-1">方案</div>
           <div className="col-span-1">狀態</div>
+          <div className="col-span-2">管理員帳號</div>
           <div className="col-span-1 text-right">用戶</div>
           <div className="col-span-1 text-right">預約</div>
-          <div className="col-span-2">建立時間</div>
           <div className="col-span-1 text-right">操作</div>
         </div>
 
@@ -133,6 +139,23 @@ export default async function SuperAdminTenantsPage() {
                   </span>
                 </div>
 
+                {/* Admin account */}
+                <div className="col-span-2 flex items-center gap-1 min-w-0">
+                  {tenant.users[0]?.username ? (
+                    <code className="text-xs px-2 py-0.5 rounded-lg truncate"
+                      style={{ background: "#DCFCE7", color: "#166534" }}>
+                      {tenant.users[0].username}
+                    </code>
+                  ) : (
+                    <span className="text-xs" style={{ color: "rgba(57,73,171,0.3)" }}>未設定</span>
+                  )}
+                  <SetAdminModal
+                    tenantId={tenant.id}
+                    tenantName={tenant.name}
+                    currentUsername={tenant.users[0]?.username ?? null}
+                  />
+                </div>
+
                 {/* User count */}
                 <div className="col-span-1 text-right text-sm font-medium" style={{ color: "#1A237E" }}>
                   {tenant._count.users}
@@ -141,11 +164,6 @@ export default async function SuperAdminTenantsPage() {
                 {/* Reservation count */}
                 <div className="col-span-1 text-right text-sm" style={{ color: "rgba(57,73,171,0.6)" }}>
                   {tenant._count.reservations}
-                </div>
-
-                {/* Created at */}
-                <div className="col-span-2 text-xs" style={{ color: "rgba(57,73,171,0.5)" }}>
-                  {new Date(tenant.createdAt).toLocaleDateString("zh-TW")}
                 </div>
 
                 {/* Actions */}

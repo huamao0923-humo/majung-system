@@ -60,12 +60,22 @@ export async function middleware(req: NextRequest) {
     // 租戶 admin
     if (subPath.startsWith("/admin")) {
       if (!token) {
-        const res = NextResponse.redirect(new URL(`/t/${slug}/login`, req.url));
+        const res = NextResponse.redirect(new URL("/admin-login", req.url));
         res.cookies.set("x-tenant-slug", slug, { path: "/", httpOnly: true, sameSite: "lax" });
         return res;
       }
-      if (token.role !== "admin" && token.role !== "superadmin") {
+      if (token.role === "superadmin") {
+        // superadmin 可存取任何租戶後台
+        const res = NextResponse.next();
+        res.cookies.set("x-tenant-slug", slug, { path: "/", httpOnly: true, sameSite: "lax" });
+        return res;
+      }
+      if (token.role !== "admin") {
         return NextResponse.redirect(new URL(`/t/${slug}`, req.url));
+      }
+      // 租戶管理員：tenantSlug 必須與 URL slug 一致
+      if (token.tenantSlug && token.tenantSlug !== slug) {
+        return NextResponse.redirect(new URL(`/t/${token.tenantSlug as string}/admin`, req.url));
       }
     }
 
