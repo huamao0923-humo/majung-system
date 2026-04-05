@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X } from "lucide-react";
 
 interface TimeSlot {
   id: string;
@@ -24,13 +24,40 @@ export default function TenantTimeSlotsSection({ timeSlots, slug }: Props) {
   const [form, setForm] = useState({ name: "", startTime: "", endTime: "", price: 0 });
   const [adding, setAdding] = useState(false);
 
+  // Edit state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", startTime: "", endTime: "", price: 0 });
+
   async function handleToggle(id: string, isActive: boolean) {
-    await fetch(`/api/t/${slug}/timeslots`, {
+    await fetch(`/api/t/${slug}/timeslots/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, isActive: !isActive }),
+      body: JSON.stringify({ isActive: !isActive }),
     });
     router.refresh();
+  }
+
+  async function handleSaveEdit(id: string) {
+    if (!editForm.name || !editForm.startTime || !editForm.endTime) return;
+    const res = await fetch(`/api/t/${slug}/timeslots/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    if (res.ok) {
+      toast.success("時段已更新");
+      setEditId(null);
+      router.refresh();
+    }
+  }
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`確定刪除時段「${name}」？`)) return;
+    const res = await fetch(`/api/t/${slug}/timeslots/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("時段已刪除");
+      router.refresh();
+    }
   }
 
   async function handleAdd() {
@@ -52,6 +79,11 @@ export default function TenantTimeSlotsSection({ timeSlots, slug }: Props) {
     }
   }
 
+  function startEdit(s: TimeSlot) {
+    setEditId(s.id);
+    setEditForm({ name: s.name, startTime: s.startTime, endTime: s.endTime, price: s.price });
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b">
@@ -60,19 +92,84 @@ export default function TenantTimeSlotsSection({ timeSlots, slug }: Props) {
       <div className="p-5 space-y-3">
         <div className="space-y-2">
           {timeSlots.map((s) => (
-            <div key={s.id} className="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
-              <div>
-                <p className="font-medium text-sm text-gray-900">{s.name}</p>
-                <p className="text-xs text-gray-400">{s.startTime} ~ {s.endTime} · NT${s.price}</p>
-              </div>
-              <button
-                onClick={() => handleToggle(s.id, s.isActive)}
-                className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                  s.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-                }`}
-              >
-                {s.isActive ? "啟用中" : "已停用"}
-              </button>
+            <div key={s.id} className="border border-gray-100 rounded-xl px-4 py-3">
+              {editId === s.id ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="名稱"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <input
+                      type="number"
+                      placeholder="費用 (NT$)"
+                      value={editForm.price || ""}
+                      onChange={(e) => setEditForm({ ...editForm, price: Number(e.target.value) })}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <input
+                      type="time"
+                      value={editForm.startTime}
+                      onChange={(e) => setEditForm({ ...editForm, startTime: e.target.value })}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <input
+                      type="time"
+                      value={editForm.endTime}
+                      onChange={(e) => setEditForm({ ...editForm, endTime: e.target.value })}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveEdit(s.id)}
+                      className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg"
+                    >
+                      <Check className="w-3 h-3" /> 儲存
+                    </button>
+                    <button
+                      onClick={() => setEditId(null)}
+                      className="flex items-center gap-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs px-3 py-1.5 rounded-lg"
+                    >
+                      <X className="w-3 h-3" /> 取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-sm text-gray-900">{s.name}</p>
+                    <p className="text-xs text-gray-400">{s.startTime} ~ {s.endTime} · NT${s.price}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleToggle(s.id, s.isActive)}
+                      className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                        s.isActive ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      {s.isActive ? "啟用中" : "已停用"}
+                    </button>
+                    <button
+                      onClick={() => startEdit(s)}
+                      className="p-1 rounded text-gray-300 hover:text-blue-500 hover:bg-blue-50"
+                      title="編輯"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(s.id, s.name)}
+                      className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"
+                      title="刪除"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

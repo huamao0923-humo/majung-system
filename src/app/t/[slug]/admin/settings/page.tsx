@@ -20,8 +20,7 @@ export default async function TenantSettingsPage({
   const tenant = await getTenant(slug);
   if (!tenant) return notFound();
 
-  const [tables, timeSlots, announcements] = await Promise.all([
-    prisma.table.findMany({ where: { tenantId: tenant.id }, orderBy: { order: "asc" } }),
+  const [timeSlots, announcements] = await Promise.all([
     prisma.timeSlot.findMany({ where: { tenantId: tenant.id }, orderBy: { order: "asc" } }),
     prisma.announcement.findMany({ where: { tenantId: tenant.id }, orderBy: { createdAt: "desc" } }),
   ]);
@@ -67,7 +66,7 @@ export default async function TenantSettingsPage({
         </div>
       </div>
 
-      <TenantTablesSection tables={tables} slug={slug} />
+      <TenantTablesSection slug={slug} />
       <TenantTimeSlotsSection timeSlots={timeSlots} slug={slug} />
       <TenantAnnouncementsSection announcements={announcements} slug={slug} />
     </div>
