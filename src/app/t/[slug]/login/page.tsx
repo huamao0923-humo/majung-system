@@ -2,10 +2,9 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 
 export default function TenantLoginPage() {
-  const router = useRouter();
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const [loading, setLoading] = useState(false);
@@ -19,8 +18,8 @@ export default function TenantLoginPage() {
         body: JSON.stringify({ role, slug }),
       });
       if (!res.ok) return;
-      router.push(role === "admin" ? `/t/${slug}/admin` : `/t/${slug}`);
-      router.refresh();
+      // 用 window.location 強制整頁刷新，確保 cookie 被瀏覽器確認後再導向
+      window.location.href = role === "admin" ? `/t/${slug}/admin` : `/t/${slug}`;
     } finally {
       setLoading(false);
     }
