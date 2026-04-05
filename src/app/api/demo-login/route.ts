@@ -21,17 +21,14 @@ export async function POST(req: NextRequest) {
   const lineUserId = `demo_${role}_fixed`;
   const displayName = role === "admin" ? "測試管理員" : "測試會員";
 
-  const user = await prisma.user.upsert({
-    where: { lineUserId },
-    update: { tenantId: tenant.id },
-    create: {
-      tenantId: tenant.id,
-      lineUserId,
-      displayName,
-      role,
-      phone: "0912345678",
-    },
+  let user = await prisma.user.findFirst({
+    where: { tenantId: tenant.id, lineUserId },
   });
+  if (!user) {
+    user = await prisma.user.create({
+      data: { tenantId: tenant.id, lineUserId, displayName, role, phone: "0912345678" },
+    });
+  }
 
   const secret = process.env.NEXTAUTH_SECRET ?? "development-secret";
   const isProduction = process.env.NODE_ENV === "production";
