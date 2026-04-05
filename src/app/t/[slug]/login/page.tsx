@@ -16,7 +16,7 @@ export default function TenantLoginPage() {
       const res = await fetch("/api/demo-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify({ role, slug }),
       });
       if (!res.ok) return;
       router.push(role === "admin" ? `/t/${slug}/admin` : `/t/${slug}`);
