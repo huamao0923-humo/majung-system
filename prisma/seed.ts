@@ -143,16 +143,35 @@ async function seedTenant(
     });
     console.log(`✅ [${slug}] 建立 ${members.length} 位會員`);
 
-    await prisma.user.create({
-      data: {
-        tenantId: tenant.id,
-        lineUserId: `${prefix}_admin_001`,
-        displayName: "店長",
-        phone: "0900-000-001",
-        role: "admin",
-      },
+    const adminUsername = slug === "default" ? "admin" : `${slug}-admin`;
+    const adminPassword = slug === "default" ? "admin1234" : `${slug}1234`;
+    const existingAdmin = await prisma.user.findFirst({
+      where: { tenantId: tenant.id, role: "admin" },
     });
-    console.log(`✅ [${slug}] 建立管理員`);
+    if (!existingAdmin) {
+      const passwordHash = await bcrypt.hash(adminPassword, 12);
+      await prisma.user.create({
+        data: {
+          tenantId: tenant.id,
+          lineUserId: `${prefix}_admin_001`,
+          displayName: "店長",
+          phone: "0900-000-001",
+          role: "admin",
+          username: adminUsername,
+          passwordHash,
+        },
+      });
+      console.log(`✅ [${slug}] 建立管理員 (${adminUsername} / ${adminPassword})`);
+    } else if (!existingAdmin.username) {
+      const passwordHash = await bcrypt.hash(adminPassword, 12);
+      await prisma.user.update({
+        where: { id: existingAdmin.id },
+        data: { username: adminUsername, passwordHash },
+      });
+      console.log(`✅ [${slug}] 補充管理員帳密 (${adminUsername} / ${adminPassword})`);
+    } else {
+      console.log(`⏭  [${slug}] 管理員已存在: ${existingAdmin.username}`);
+    }
 
     // ── 取得桌位與時段 ──────────────────────────────
     const tables = await prisma.table.findMany({ where: { tenantId: tenant.id }, orderBy: { order: "asc" } });
