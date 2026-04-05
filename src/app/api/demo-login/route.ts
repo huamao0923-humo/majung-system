@@ -47,10 +47,11 @@ export async function POST(req: NextRequest) {
     salt: cookieName,
   });
 
+  const isProduction = process.env.NODE_ENV === "production";
   const cookieStore = await cookies();
   cookieStore.set(cookieName, token, {
     httpOnly: true,
-    secure: false,
+    secure: isProduction,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24,
