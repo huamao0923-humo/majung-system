@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   providers: [
     // ── SuperAdmin credentials login ──────────────────────────────
     Credentials({
