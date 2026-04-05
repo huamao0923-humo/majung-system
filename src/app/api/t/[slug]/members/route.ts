@@ -37,3 +37,47 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   return NextResponse.json({ users, total, page, pageSize });
 }
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const result = await requireAdmin(slug);
+  if ("error" in result) return result.error;
+  const { tenant } = result;
+
+  const { displayName, phone } = await req.json();
+  if (!displayName?.trim()) {
+    return NextResponse.json({ error: "姓名不得為空" }, { status: 400 });
+  }
+
+  const lineUserId = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const user = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      lineUserId,
+      displayName: displayName.trim(),
+      phone: phone?.trim() || null,
+      role: "member",
+    },
+    include: { _count: { select: { reservations: true } } },
+  });
+
+  return NextResponse.json(user, { status: 201 });
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const result = await requireAdmin(slug);
+  if ("error" in result) return result.error;
+  const { tenant } = result;
+
+  // 刪除所有 lineUserId 以 demo_ 開頭的測試用戶
+  const deleted = await prisma.user.deleteMany({
+    where: {
+      tenantId: tenant.id,
+      role: "member",
+      lineUserId: { startsWith: "demo_" },
+    },
+  });
+
+  return NextResponse.json({ deleted: deleted.count });
+}

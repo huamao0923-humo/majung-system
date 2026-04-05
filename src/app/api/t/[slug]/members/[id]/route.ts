@@ -12,7 +12,7 @@ export async function PATCH(
   const { tenant } = result;
 
   const body = await req.json();
-  const { isBlacklisted, phone, note } = body;
+  const { isBlacklisted, phone, displayName, noShowCount } = body;
 
   const user = await prisma.user.findFirst({ where: { id, tenantId: tenant.id } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -21,9 +21,28 @@ export async function PATCH(
     where: { id },
     data: {
       ...(isBlacklisted !== undefined && { isBlacklisted }),
-      ...(phone !== undefined && { phone }),
+      ...(phone !== undefined && { phone: phone?.trim() || null }),
+      ...(displayName !== undefined && { displayName: displayName.trim() }),
+      ...(noShowCount !== undefined && { noShowCount: parseInt(noShowCount) }),
     },
+    include: { _count: { select: { reservations: true } } },
   });
 
   return NextResponse.json(updated);
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ slug: string; id: string }> }
+) {
+  const { slug, id } = await params;
+  const result = await requireAdmin(slug);
+  if ("error" in result) return result.error;
+  const { tenant } = result;
+
+  const user = await prisma.user.findFirst({ where: { id, tenantId: tenant.id } });
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await prisma.user.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }
