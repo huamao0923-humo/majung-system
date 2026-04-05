@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getTenant } from "@/lib/tenant";
 import { notFound } from "next/navigation";
 import TenantReservationActions from "./actions";
+import CreateReservationButton from "./create-reservation-button";
 
 export const dynamic = 'force-dynamic';
 
@@ -112,13 +113,14 @@ export default async function TenantAdminReservationsPage({
   return (
     <div className="p-6 space-y-5 max-w-5xl mx-auto">
       {/* 標題 */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#1A0500" }}>預約管理</h1>
           <p className="text-sm mt-0.5" style={{ color: "rgba(139,0,0,0.5)" }}>
             {label} · {formatDate(start)}{range !== "today" ? ` ～ ${formatDate(end)}` : ""} · 共 {reservations.length} 筆
           </p>
         </div>
+        <CreateReservationButton slug={slug} />
       </div>
 
       {/* 篩選列 */}
