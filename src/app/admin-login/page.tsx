@@ -1,34 +1,17 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { signIn, useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { signIn } from "next-auth/react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // 若已登入則自動導向
-  useEffect(() => {
-    if (status === "authenticated" && session) {
-      if (session.user.role === "superadmin") {
-        router.push("/superadmin");
-      } else if (session.user.tenantSlug) {
-        router.push(`/t/${session.user.tenantSlug}/admin`);
-      } else if (session.user.tenantId) {
-        // LINE 登入的 admin（舊流程）
-        router.push("/");
-      }
-    }
-  }, [status, session, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,7 +31,17 @@ export default function AdminLoginPage() {
       return;
     }
 
-    // 登入成功，useEffect 會自動導向
+    // 登入成功，從 session API 取得 tenantSlug 再導向
+    const sessionRes = await fetch("/api/auth/session");
+    const session = await sessionRes.json();
+
+    if (session?.user?.tenantSlug) {
+      router.push(`/t/${session.user.tenantSlug}/admin`);
+    } else if (session?.user?.role === "superadmin") {
+      router.push("/superadmin");
+    } else {
+      router.push("/");
+    }
   }
 
   return (
