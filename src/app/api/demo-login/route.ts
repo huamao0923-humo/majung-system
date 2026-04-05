@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
   });
 
   const secret = process.env.NEXTAUTH_SECRET ?? "development-secret";
-  const cookieName = "authjs.session-token";
+  const isProduction = process.env.NODE_ENV === "production";
+  // NextAuth 在 HTTPS 環境自動加 __Secure- 前綴
+  const cookieName = isProduction ? "__Secure-authjs.session-token" : "authjs.session-token";
 
   const token = await encode({
     token: {
@@ -47,7 +49,6 @@ export async function POST(req: NextRequest) {
     salt: cookieName,
   });
 
-  const isProduction = process.env.NODE_ENV === "production";
   const cookieStore = await cookies();
   cookieStore.set(cookieName, token, {
     httpOnly: true,

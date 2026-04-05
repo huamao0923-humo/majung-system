@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-const COOKIE_NAME = "authjs.session-token";
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const COOKIE_NAME = IS_PRODUCTION ? "__Secure-authjs.session-token" : "authjs.session-token";
 
 // Simple in-memory rate limiter
 // TODO: For multi-instance deployments (e.g. Vercel), replace with Upstash Redis rate limiting
