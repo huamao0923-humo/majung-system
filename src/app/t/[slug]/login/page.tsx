@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
 export default function TenantLoginPage() {
   const params = useParams<{ slug: string }>();
@@ -123,9 +124,16 @@ export default function TenantLoginPage() {
           </div>
 
           {/* 底部 */}
-          <div className="px-8 pb-5 text-center">
+          <div className="px-8 pb-5 text-center space-y-2">
             <div className="h-px mb-3" style={{ background: "linear-gradient(90deg, transparent, #D4AF3740, transparent)" }} />
             <p className="text-xs" style={{ color: "#9CA3AF" }}>登入即表示同意本系統之服務條款</p>
+            <Link
+              href="/admin-login"
+              className="block text-xs underline underline-offset-2"
+              style={{ color: "rgba(212,175,55,0.5)" }}
+            >
+              館主 / 管理員登入
+            </Link>
           </div>
         </div>
       </div>

@@ -54,6 +54,9 @@ export default async function TenantHomePage({
 
   const session = await auth();
   if (!session) redirect(`/t/${slug}/login`);
+  if (session.user.role === "admin" || session.user.role === "superadmin") {
+    redirect(`/t/${slug}/admin`);
+  }
 
   const today = new Date();
 
