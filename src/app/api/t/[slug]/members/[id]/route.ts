@@ -43,6 +43,6 @@ export async function DELETE(
   const user = await prisma.user.findFirst({ where: { id, tenantId: tenant.id } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await prisma.user.delete({ where: { id } });
+  await prisma.user.delete({ where: { id, tenantId: tenant.id } });
   return NextResponse.json({ ok: true });
 }

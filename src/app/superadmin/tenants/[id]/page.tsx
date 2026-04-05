@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Users, CalendarCheck } from "lucide-react";
@@ -42,8 +42,9 @@ export default function EditTenantPage() {
   const [success, setSuccess] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState<{ label: string; count: number }[]>([]);
 
-  useEffect(() => {
+  const fetchTenant = useCallback(() => {
     fetch(`/api/superadmin/tenants/${id}`)
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: TenantDetail) => {
@@ -62,6 +63,14 @@ export default function EditTenantPage() {
       .catch(() => setError("載入失敗"))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    fetchTenant();
+    fetch(`/api/superadmin/tenants/${id}/stats`)
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then(setMonthlyStats)
+      .catch(() => {});
+  }, [id, fetchTenant]);
 
   function set(field: keyof typeof form, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -248,6 +257,46 @@ export default function EditTenantPage() {
           </div>
         </div>
       </div>
+
+      {/* Monthly stats */}
+      {monthlyStats.length > 0 && (() => {
+        const maxCount = Math.max(...monthlyStats.map((m) => m.count), 1);
+        return (
+          <div
+            className="rounded-2xl p-5 space-y-3"
+            style={{ background: "white", border: "1px solid rgba(57,73,171,0.12)" }}
+          >
+            <p className="text-xs font-semibold" style={{ color: "rgba(26,35,126,0.5)", letterSpacing: "0.05em" }}>
+              近 6 個月預約量
+            </p>
+            <div className="space-y-2">
+              {monthlyStats.map((m) => (
+                <div key={m.label} className="flex items-center gap-3">
+                  <span className="text-xs w-8 flex-shrink-0 text-right" style={{ color: "rgba(57,73,171,0.5)" }}>
+                    {m.label}
+                  </span>
+                  <div className="flex-1 h-2 rounded-full" style={{ background: "#EEF2FF" }}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.round((m.count / maxCount) * 100)}%`,
+                        background: "linear-gradient(90deg, #3949AB, #7986CB)",
+                        minWidth: m.count > 0 ? "4px" : "0",
+                      }}
+                    />
+                  </div>
+                  <span
+                    className="text-xs font-semibold w-6 text-right flex-shrink-0"
+                    style={{ color: m.count > 0 ? "#3949AB" : "rgba(57,73,171,0.25)" }}
+                  >
+                    {m.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Actions */}
       <div

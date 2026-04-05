@@ -195,6 +195,11 @@ async function seedTenant(
       amount: number;
       checkedInAt?: Date;
     }) {
+      const existing = await prisma.reservation.findFirst({
+        where: { tenantId: tenant!.id, tableId: data.tableId, timeSlotId: data.timeSlotId, date: data.date },
+      });
+      if (existing) return existing;
+
       const r = await prisma.reservation.create({
         data: {
           tenantId: tenant!.id,

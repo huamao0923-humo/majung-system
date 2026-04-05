@@ -10,6 +10,8 @@ import { Suspense } from "react";
 
 export const dynamic = 'force-dynamic';
 
+const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
 export default async function SuperAdminTenantsPage({
   searchParams,
 }: {
@@ -30,7 +32,7 @@ export default async function SuperAdminTenantsPage({
   if (status === "active") where.isActive = true;
   if (status === "suspended") where.isActive = false;
 
-  const [tenants, totalCount] = await Promise.all([
+  const [tenants, totalCount, recent30] = await Promise.all([
     prisma.tenant.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -44,7 +46,14 @@ export default async function SuperAdminTenantsPage({
       },
     }),
     prisma.tenant.count(),
+    prisma.reservation.groupBy({
+      by: ["tenantId"],
+      where: { date: { gte: thirtyDaysAgo } },
+      _count: { id: true },
+    }),
   ]);
+
+  const recent30Map = Object.fromEntries(recent30.map((r) => [r.tenantId, r._count.id]));
 
   const planLabel: Record<string, string> = {
     basic: "基本",
@@ -102,7 +111,7 @@ export default async function SuperAdminTenantsPage({
           <div className="col-span-1">狀態</div>
           <div className="col-span-2">管理員帳號</div>
           <div className="col-span-1 text-right">用戶</div>
-          <div className="col-span-1 text-right">預約</div>
+          <div className="col-span-1 text-right">近30天</div>
           <div className="col-span-2 text-right">操作</div>
         </div>
 
@@ -189,9 +198,10 @@ export default async function SuperAdminTenantsPage({
                   {tenant._count.users}
                 </div>
 
-                {/* Reservation count */}
-                <div className="col-span-1 text-right text-sm" style={{ color: "rgba(57,73,171,0.6)" }}>
-                  {tenant._count.reservations}
+                {/* 近30天預約 */}
+                <div className="col-span-1 text-right text-sm font-medium"
+                  style={{ color: recent30Map[tenant.id] ? "#3949AB" : "rgba(57,73,171,0.25)" }}>
+                  {recent30Map[tenant.id] ?? 0}
                 </div>
 
                 {/* Actions */}

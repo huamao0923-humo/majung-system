@@ -29,11 +29,12 @@ export default function TenantTimeSlotsSection({ timeSlots, slug }: Props) {
   const [editForm, setEditForm] = useState({ name: "", startTime: "", endTime: "", price: 0 });
 
   async function handleToggle(id: string, isActive: boolean) {
-    await fetch(`/api/t/${slug}/timeslots/${id}`, {
+    const res = await fetch(`/api/t/${slug}/timeslots/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !isActive }),
     });
+    if (!res.ok) { toast.error("操作失敗"); return; }
     router.refresh();
   }
 
@@ -44,20 +45,18 @@ export default function TenantTimeSlotsSection({ timeSlots, slug }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editForm),
     });
-    if (res.ok) {
-      toast.success("時段已更新");
-      setEditId(null);
-      router.refresh();
-    }
+    if (!res.ok) { toast.error("更新失敗"); return; }
+    toast.success("時段已更新");
+    setEditId(null);
+    router.refresh();
   }
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`確定刪除時段「${name}」？`)) return;
     const res = await fetch(`/api/t/${slug}/timeslots/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success("時段已刪除");
-      router.refresh();
-    }
+    if (!res.ok) { toast.error("刪除失敗"); return; }
+    toast.success("時段已刪除");
+    router.refresh();
   }
 
   async function handleAdd() {

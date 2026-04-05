@@ -92,30 +92,29 @@ export default function TenantTablesSection({ slug }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: editFloorName.trim() }),
     });
-    if (res.ok) {
-      toast.success("已更新名稱");
-      setEditFloorId(null);
-      load();
-    }
+    if (!res.ok) { toast.error("更新失敗"); return; }
+    toast.success("已更新名稱");
+    setEditFloorId(null);
+    load();
   }
 
   async function handleDeleteFloor(id: string, name: string) {
     if (!confirm(`確定刪除「${name}」空間？底下所有桌位也會一併刪除。`)) return;
     const res = await fetch(`/api/t/${slug}/floors/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success("空間已刪除");
-      setActiveFloorId(null);
-      load();
-    }
+    if (!res.ok) { toast.error("刪除失敗"); return; }
+    toast.success("空間已刪除");
+    setActiveFloorId(null);
+    load();
   }
 
   // --- Table actions ---
   async function handleToggleTable(id: string, isActive: boolean) {
-    await fetch(`/api/t/${slug}/tables/${id}`, {
+    const res = await fetch(`/api/t/${slug}/tables/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !isActive }),
     });
+    if (!res.ok) { toast.error("操作失敗"); return; }
     load();
   }
 
@@ -133,12 +132,11 @@ export default function TenantTablesSection({ slug }: Props) {
           order: activeFloor?.tables.length ?? 0,
         }),
       });
-      if (res.ok) {
-        toast.success("桌位已新增");
-        setNewTableName("");
-        setNewTableCap(4);
-        load();
-      }
+      if (!res.ok) { toast.error("新增失敗"); return; }
+      toast.success("桌位已新增");
+      setNewTableName("");
+      setNewTableCap(4);
+      load();
     } finally {
       setAddingTable(false);
     }
@@ -151,20 +149,18 @@ export default function TenantTablesSection({ slug }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: editTableName.trim(), capacity: editTableCap }),
     });
-    if (res.ok) {
-      toast.success("已儲存");
-      setEditTableId(null);
-      load();
-    }
+    if (!res.ok) { toast.error("儲存失敗"); return; }
+    toast.success("已儲存");
+    setEditTableId(null);
+    load();
   }
 
   async function handleDeleteTable(id: string, name: string) {
     if (!confirm(`確定刪除桌位「${name}」？`)) return;
     const res = await fetch(`/api/t/${slug}/tables/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success("桌位已刪除");
-      load();
-    }
+    if (!res.ok) { toast.error("刪除失敗"); return; }
+    toast.success("桌位已刪除");
+    load();
   }
 
   if (loading) {

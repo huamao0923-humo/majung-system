@@ -43,17 +43,19 @@ export default function TenantAnnouncementsSection({ announcements, slug }: Prop
 
   async function handleDelete(id: string) {
     if (!confirm("確定刪除此公告？")) return;
-    await fetch(`/api/t/${slug}/announcements?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/t/${slug}/announcements?id=${id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("刪除失敗"); return; }
     toast.success("公告已刪除");
     router.refresh();
   }
 
   async function handleToggle(id: string, isActive: boolean) {
-    await fetch(`/api/t/${slug}/announcements`, {
+    const res = await fetch(`/api/t/${slug}/announcements`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, isActive: !isActive }),
     });
+    if (!res.ok) { toast.error("操作失敗"); return; }
     router.refresh();
   }
 
