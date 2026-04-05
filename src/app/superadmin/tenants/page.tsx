@@ -4,24 +4,47 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import SetAdminModal from "./set-admin-modal";
+import TenantSearchBar from "./tenant-search-bar";
+import { Prisma } from "@prisma/client";
+import { Suspense } from "react";
 
 export const dynamic = 'force-dynamic';
 
-export default async function SuperAdminTenantsPage() {
+export default async function SuperAdminTenantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string }>;
+}) {
   const { error } = await requireSuperAdmin();
   if (error) redirect("/superadmin/login");
 
-  const tenants = await prisma.tenant.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { users: true, reservations: true } },
-      users: {
-        where: { role: "admin" },
-        select: { id: true, username: true, displayName: true },
-        take: 1,
+  const { q, status } = await searchParams;
+
+  const where: Prisma.TenantWhereInput = {};
+  if (q) {
+    where.OR = [
+      { name: { contains: q } },
+      { slug: { contains: q } },
+    ];
+  }
+  if (status === "active") where.isActive = true;
+  if (status === "suspended") where.isActive = false;
+
+  const [tenants, totalCount] = await Promise.all([
+    prisma.tenant.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { users: true, reservations: true } },
+        users: {
+          where: { role: "admin" },
+          select: { id: true, username: true, displayName: true },
+          take: 1,
+        },
       },
-    },
-  });
+    }),
+    prisma.tenant.count(),
+  ]);
 
   const planLabel: Record<string, string> = {
     basic: "基本",
@@ -38,7 +61,7 @@ export default async function SuperAdminTenantsPage() {
             租戶管理
           </h1>
           <p className="text-sm mt-1" style={{ color: "rgba(26,35,126,0.5)" }}>
-            共 {tenants.length} 間租戶
+            {q || status ? `篩選結果 ${tenants.length} 間` : `共 ${totalCount} 間租戶`}
           </p>
         </div>
         <Link
@@ -55,6 +78,11 @@ export default async function SuperAdminTenantsPage() {
         </Link>
       </div>
 
+      {/* Search + Filter */}
+      <Suspense>
+        <TenantSearchBar />
+      </Suspense>
+
       {/* Table */}
       <div
         className="rounded-2xl overflow-hidden shadow-sm"
@@ -68,19 +96,19 @@ export default async function SuperAdminTenantsPage() {
             color: "rgba(255,255,255,0.5)",
           }}
         >
-          <div className="col-span-3">館名</div>
+          <div className="col-span-2">館名</div>
           <div className="col-span-2">Slug</div>
           <div className="col-span-1">方案</div>
           <div className="col-span-1">狀態</div>
           <div className="col-span-2">管理員帳號</div>
           <div className="col-span-1 text-right">用戶</div>
           <div className="col-span-1 text-right">預約</div>
-          <div className="col-span-1 text-right">操作</div>
+          <div className="col-span-2 text-right">操作</div>
         </div>
 
         {tenants.length === 0 ? (
           <div className="text-center py-16 bg-white text-sm" style={{ color: "rgba(57,73,171,0.3)" }}>
-            尚無租戶，點擊右上角新增第一間
+            {q || status ? "找不到符合的租戶" : "尚無租戶，點擊右上角新增第一間"}
           </div>
         ) : (
           <div className="bg-white divide-y" style={{ borderColor: "rgba(57,73,171,0.08)" }}>
@@ -90,9 +118,9 @@ export default async function SuperAdminTenantsPage() {
                 className="px-5 py-4 grid grid-cols-12 gap-4 items-center hover:bg-indigo-50/30 transition-colors"
               >
                 {/* Name */}
-                <div className="col-span-3 flex items-center gap-3 min-w-0">
+                <div className="col-span-2 flex items-center gap-2 min-w-0">
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
                     style={{
                       background: "linear-gradient(135deg, rgba(57,73,171,0.1), rgba(26,35,126,0.08))",
                       color: "#3949AB",
@@ -167,7 +195,15 @@ export default async function SuperAdminTenantsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="col-span-1 flex justify-end">
+                <div className="col-span-2 flex justify-end gap-1.5">
+                  <Link
+                    href={`/t/${tenant.slug}/admin`}
+                    target="_blank"
+                    className="text-xs px-2.5 py-1 rounded-lg transition-colors hover:bg-green-50"
+                    style={{ color: "#166534", border: "1px solid rgba(22,101,52,0.25)" }}
+                  >
+                    後台 ↗
+                  </Link>
                   <Link
                     href={`/superadmin/tenants/${tenant.id}`}
                     className="text-xs px-2.5 py-1 rounded-lg transition-colors hover:bg-indigo-100"

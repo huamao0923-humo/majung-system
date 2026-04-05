@@ -14,7 +14,7 @@ export default async function SuperAdminDashboard() {
   const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000 - 1);
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const [totalTenants, activeTenants, totalUsers, todayReservations, monthRevenue, recentTenants] =
+  const [totalTenants, activeTenants, totalUsers, todayReservations, monthRevenue, recentTenants, todayGroupBy] =
     await Promise.all([
       prisma.tenant.count(),
       prisma.tenant.count({ where: { isActive: true } }),
@@ -39,7 +39,35 @@ export default async function SuperAdminDashboard() {
           _count: { select: { users: true, reservations: true } },
         },
       }),
+      prisma.reservation.groupBy({
+        by: ["tenantId"],
+        where: {
+          date: { gte: startOfToday, lte: endOfToday },
+          status: { in: ["pending", "confirmed", "checked_in"] },
+        },
+        _count: { id: true },
+        orderBy: { _count: { id: "desc" } },
+        take: 8,
+      }),
     ]);
+
+  // 取得今日有預約的租戶名稱
+  const tenantIds = todayGroupBy.map((g) => g.tenantId);
+  const tenantNames = tenantIds.length > 0
+    ? await prisma.tenant.findMany({
+        where: { id: { in: tenantIds } },
+        select: { id: true, name: true, slug: true },
+      })
+    : [];
+
+  const tenantNameMap = Object.fromEntries(tenantNames.map((t) => [t.id, t]));
+  const todayRanking = todayGroupBy.map((g) => ({
+    tenantId: g.tenantId,
+    name: tenantNameMap[g.tenantId]?.name ?? g.tenantId,
+    slug: tenantNameMap[g.tenantId]?.slug ?? "",
+    count: g._count.id,
+  }));
+  const maxCount = todayRanking[0]?.count ?? 1;
 
   const stats = [
     { label: "活躍租戶數", value: `${activeTenants} / ${totalTenants}`, icon: Building2, accent: true },
@@ -180,7 +208,7 @@ export default async function SuperAdminDashboard() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <span
                     className="text-xs px-2 py-0.5 rounded-full font-medium"
                     style={
@@ -191,6 +219,15 @@ export default async function SuperAdminDashboard() {
                   >
                     {tenant.isActive ? "活躍" : "暫停"}
                   </span>
+                  <a
+                    href={`/t/${tenant.slug}/admin`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs px-2.5 py-1 rounded-lg transition-colors hover:bg-green-50"
+                    style={{ color: "#166534", border: "1px solid rgba(22,101,52,0.25)" }}
+                  >
+                    後台 ↗
+                  </a>
                   <a
                     href={`/superadmin/tenants/${tenant.id}`}
                     className="text-xs px-2.5 py-1 rounded-lg transition-colors hover:bg-indigo-100"
@@ -204,6 +241,53 @@ export default async function SuperAdminDashboard() {
           </div>
         )}
       </div>
+      {/* Today's reservation ranking */}
+      {todayRanking.length > 0 && (
+        <div
+          className="rounded-2xl overflow-hidden shadow-sm"
+          style={{ border: "1px solid rgba(57,73,171,0.15)" }}
+        >
+          <div
+            className="px-5 py-4"
+            style={{
+              background: "linear-gradient(135deg, #1A237E, #0D1757)",
+              borderBottom: "1px solid rgba(99,120,255,0.15)",
+            }}
+          >
+            <h2 className="font-semibold tracking-wide text-white">今日預約排行</h2>
+          </div>
+          <div className="bg-white divide-y" style={{ borderColor: "rgba(57,73,171,0.08)" }}>
+            {todayRanking.map((item, i) => (
+              <div key={item.tenantId} className="px-5 py-3 flex items-center gap-3">
+                <span
+                  className="text-xs w-5 text-center font-semibold flex-shrink-0"
+                  style={{ color: i < 3 ? "#3949AB" : "rgba(57,73,171,0.3)" }}
+                >
+                  {i + 1}
+                </span>
+                <span className="flex-1 text-sm truncate font-medium" style={{ color: "#1A237E" }}>
+                  {item.name}
+                </span>
+                <div className="w-28 h-1.5 rounded-full flex-shrink-0" style={{ background: "#EEF2FF" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.round((item.count / maxCount) * 100)}%`,
+                      background: "linear-gradient(90deg, #3949AB, #7986CB)",
+                    }}
+                  />
+                </div>
+                <span
+                  className="text-sm font-bold w-6 text-right flex-shrink-0"
+                  style={{ color: "#3949AB" }}
+                >
+                  {item.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

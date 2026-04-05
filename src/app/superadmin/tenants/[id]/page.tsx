@@ -40,6 +40,8 @@ export default function EditTenantPage() {
   const [seedDone, setSeedDone] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/superadmin/tenants/${id}`)
@@ -110,6 +112,26 @@ export default function EditTenantPage() {
       setError("操作失敗");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleteLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/superadmin/tenants/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/superadmin/tenants");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "刪除失敗");
+        setDeleteConfirm(false);
+      }
+    } catch {
+      setError("網路錯誤");
+      setDeleteConfirm(false);
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -232,6 +254,17 @@ export default function EditTenantPage() {
         className="rounded-2xl p-5 flex flex-wrap gap-3"
         style={{ background: "white", border: "1px solid rgba(57,73,171,0.15)" }}
       >
+        {tenant && (
+          <a
+            href={`/t/${tenant.slug}/admin`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-85"
+            style={{ background: "#DCFCE7", color: "#166534", border: "1px solid #BBF7D0" }}
+          >
+            進入租戶後台 ↗
+          </a>
+        )}
         <button
           onClick={handleSeed}
           disabled={seedLoading || seedDone}
@@ -429,6 +462,46 @@ export default function EditTenantPage() {
           </div>
         </div>
       </form>
+
+      {/* Danger Zone */}
+      <div
+        className="rounded-2xl p-5 space-y-3"
+        style={{ border: "1px solid rgba(220,38,38,0.2)", background: "#FFF5F5" }}
+      >
+        <h3 className="text-sm font-semibold" style={{ color: "#991B1B" }}>危險操作</h3>
+        {!deleteConfirm ? (
+          <button
+            onClick={() => setDeleteConfirm(true)}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-85"
+            style={{ background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA" }}
+          >
+            刪除此租戶
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm" style={{ color: "#991B1B" }}>
+              確定要永久刪除「{tenant?.name}」？此操作無法復原，所有用戶、預約與資料將一併刪除。
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={deleteLoading}
+                className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-60 transition-all"
+                style={{ background: "#DC2626", color: "#fff" }}
+              >
+                {deleteLoading ? "刪除中…" : "確認永久刪除"}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                className="px-4 py-2 rounded-xl text-sm transition-all hover:bg-gray-100"
+                style={{ color: "#6B7280", border: "1px solid #E5E7EB" }}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
