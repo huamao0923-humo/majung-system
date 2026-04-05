@@ -13,6 +13,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
   const { status, method, amount, note } = body;
 
+  // 確認付款記錄屬於該管理員的租戶
+  const existing = await prisma.payment.findUnique({
+    where: { id },
+    include: { reservation: { select: { tenantId: true } } },
+  });
+  if (!existing || existing.reservation.tenantId !== session.user.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const payment = await prisma.payment.update({
     where: { id },
     data: {
@@ -30,15 +39,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   });
 
-  // Mark reservation as completed when paid
   if (status === "paid") {
     await prisma.reservation.update({
       where: { id: payment.reservationId },
       data: { status: "completed" },
     });
 
-    // H3 + C2: null check + LINE 推播失敗不影響主流程
-    const lineUserId = payment.reservation.user.lineUserId;
+    const lineUserId = payment.reservation.user?.lineUserId;
     if (lineUserId) {
       try {
         await sendLineMessage(lineUserId, [

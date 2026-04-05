@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type") ?? "day"; // day | month
+  const type = searchParams.get("type") ?? "day";
   const date = searchParams.get("date") ?? new Date().toISOString();
 
   const d = new Date(date);
@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     where: {
       status: "paid",
       paidAt: { gte: start, lte: end },
+      reservation: { tenantId: session.user.tenantId },
     },
     include: {
       reservation: {
@@ -37,7 +38,6 @@ export async function GET(req: NextRequest) {
   const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0);
   const totalCount = payments.length;
 
-  // Group by timeSlot
   const bySlot: Record<string, { name: string; count: number; amount: number }> = {};
   for (const p of payments) {
     const slotName = p.reservation.timeSlot.name;

@@ -43,7 +43,7 @@ export default function EditTenantPage() {
 
   useEffect(() => {
     fetch(`/api/superadmin/tenants/${id}`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: TenantDetail) => {
         setTenant(data);
         setForm({

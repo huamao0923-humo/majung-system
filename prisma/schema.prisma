@@ -139,9 +139,9 @@ model Reservation {
   updatedAt   DateTime  @updatedAt
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id])
-  table    Table    @relation(fields: [tableId], references: [id])
-  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id])
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  table    Table    @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
   payment  Payment?
 }
 
@@ -172,8 +172,8 @@ model WaitlistEntry {
   createdAt  DateTime @default(now())
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id])
-  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id])
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
 }
 
 // ─── 公告──────────────────────────────────────────────────────

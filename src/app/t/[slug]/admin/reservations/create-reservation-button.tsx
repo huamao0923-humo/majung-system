@@ -51,11 +51,12 @@ export default function CreateReservationButton({ slug }: { slug: string }) {
   useEffect(() => {
     if (!open) return;
     fetch(`/api/t/${slug}/timeslots`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((data: TimeSlot[]) => {
         setTimeSlots(data);
         if (data.length > 0) setSelectedSlot(data[0]);
-      });
+      })
+      .catch(() => {});
   }, [open, slug]);
 
   // 搜尋會員（debounce）
@@ -80,8 +81,9 @@ export default function CreateReservationButton({ slug }: { slug: string }) {
   useEffect(() => {
     if (step !== 3 || !selectedSlot) return;
     fetch(`/api/t/${slug}/tables?date=${date}&timeSlotId=${selectedSlot.id}`)
-      .then((r) => r.json())
-      .then((data: Table[]) => setTables(data));
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: Table[]) => setTables(data))
+      .catch(() => setTables([]));
   }, [step, slug, date, selectedSlot]);
 
   function reset() {

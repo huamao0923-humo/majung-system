@@ -9,9 +9,8 @@ export async function GET() {
   }
 
   const floors = await prisma.floor.findMany({
-    include: {
-      tables: { orderBy: { order: "asc" } },
-    },
+    where: { tenantId: session.user.tenantId },
+    include: { tables: { orderBy: { order: "asc" } } },
     orderBy: { order: "asc" },
   });
 
@@ -31,13 +30,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "名稱不能為空" }, { status: 400 });
   }
 
-  const count = await prisma.floor.count();
+  const count = await prisma.floor.count({ where: { tenantId: session.user.tenantId } });
 
   const floor = await prisma.floor.create({
     data: {
       name: name.trim(),
       order: count,
-      tenantId: session.user.tenantId ?? "default",
+      tenantId: session.user.tenantId,
     },
     include: { tables: true },
   });

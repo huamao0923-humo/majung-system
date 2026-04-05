@@ -20,9 +20,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (!reservation) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Only admin can change status (except cancel by owner)
   const isOwner = reservation.userId === session.user.id;
   const isAdmin = session.user.role === "admin";
+
+  // 確認預約屬於同一租戶
+  if (isAdmin && reservation.tenantId !== session.user.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (isOwner && reservation.tenantId !== session.user.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   if (!isAdmin && !(isOwner && status === "cancelled")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -38,7 +45,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     include: { user: true, table: true, timeSlot: true, payment: true },
   });
 
-  // M4: 取消時同步將付款記錄標為 cancelled
   if (status === "cancelled" && updated.payment) {
     await prisma.payment.update({
       where: { id: updated.payment.id },
@@ -46,17 +52,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  // Notify on cancel
   if (status === "cancelled") {
-    await sendLineMessage(reservation.user.lineUserId, [
-      cancelledMessage({
-        displayName: reservation.user.displayName,
-        date: formatDate(reservation.date),
-        timeSlotName: reservation.timeSlot.name,
-      }),
-    ]);
+    try {
+      await sendLineMessage(reservation.user.lineUserId, [
+        cancelledMessage({
+          displayName: reservation.user.displayName,
+          date: formatDate(reservation.date),
+          timeSlotName: reservation.timeSlot.name,
+        }),
+      ]);
+    } catch (err) {
+      console.error("[LINE] 取消通知推播失敗:", err);
+    }
 
-    // M1: 通知同時段候補名單用戶
     const waitlistEntries = await prisma.waitlistEntry.findMany({
       where: {
         timeSlotId: reservation.timeSlotId,
@@ -67,17 +75,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
 
     for (const entry of waitlistEntries) {
-      await prisma.waitlistEntry.update({
-        where: { id: entry.id },
-        data: { notified: true },
-      });
-      await sendLineMessage(entry.user.lineUserId, [
-        waitlistAvailableMessage({
-          displayName: entry.user.displayName,
-          date: formatDate(entry.date),
-          timeSlotName: entry.timeSlot.name,
-        }),
-      ]);
+      await prisma.waitlistEntry.update({ where: { id: entry.id }, data: { notified: true } });
+      try {
+        await sendLineMessage(entry.user.lineUserId, [
+          waitlistAvailableMessage({
+            displayName: entry.user.displayName,
+            date: formatDate(entry.date),
+            timeSlotName: entry.timeSlot.name,
+          }),
+        ]);
+      } catch (err) {
+        console.error("[LINE] 候補通知推播失敗:", err);
+      }
     }
   }
 

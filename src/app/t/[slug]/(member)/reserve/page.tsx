@@ -65,15 +65,19 @@ export default function TenantReservePage() {
   const dayLabels = ["日", "一", "二", "三", "四", "五", "六"];
 
   useEffect(() => {
-    fetch(`/api/t/${slug}/timeslots`).then((r) => r.json()).then(setTimeSlots);
+    fetch(`/api/t/${slug}/timeslots`)
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then(setTimeSlots)
+      .catch(() => setTimeSlots([]));
   }, [slug]);
 
   useEffect(() => {
     if (selectedDate && selectedSlot) {
       setLoading(true);
       fetch(`/api/t/${slug}/tables?date=${selectedDate}&timeSlotId=${selectedSlot.id}`)
-        .then((r) => r.json())
+        .then((r) => r.ok ? r.json() : Promise.reject(r.status))
         .then(setTables)
+        .catch(() => setTables([]))
         .finally(() => setLoading(false));
     }
   }, [selectedDate, selectedSlot, slug]);

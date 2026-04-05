@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET 環境變數未設定，生產環境禁止使用預設值");
+}
+
 import NextAuth from "next-auth";
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
@@ -127,7 +131,12 @@ export const authConfig: NextAuthConfig = {
         session.user.role = "superadmin";
         session.user.id = token.userId as string;
       }
-      // tenant-admin session（credentials 登入，tenantSlug 存在 token）
+      // tenant-admin credentials 登入（lineUserId 不存在，但 tenantId + role + userId 在 token 中）
+      if (!token.lineUserId && token.role === "admin" && token.userId) {
+        session.user.role = token.role as string;
+        session.user.id = token.userId as string;
+        session.user.tenantId = token.tenantId as string;
+      }
       if (token.tenantSlug) {
         session.user.tenantSlug = token.tenantSlug as string;
       }

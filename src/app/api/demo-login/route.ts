@@ -18,11 +18,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "租戶不存在，請先執行 npm run db:seed" }, { status: 500 });
   }
 
-  const lineUserId = `demo_${role}_${Date.now()}`;
+  const lineUserId = `demo_${role}_fixed`;
   const displayName = role === "admin" ? "測試管理員" : "測試會員";
 
-  const user = await prisma.user.create({
-    data: {
+  const user = await prisma.user.upsert({
+    where: { lineUserId },
+    update: { tenantId: tenant.id },
+    create: {
       tenantId: tenant.id,
       lineUserId,
       displayName,

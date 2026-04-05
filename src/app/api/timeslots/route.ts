@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+async function getSession() {
+  const session = await auth();
+  if (!session || !session.user.tenantId) return null;
+  return session;
+}
+
 export async function GET() {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const slots = await prisma.timeSlot.findMany({
-    where: { isActive: true },
+    where: { tenantId: session.user.tenantId, isActive: true },
     orderBy: { order: "asc" },
   });
   return NextResponse.json(slots);
@@ -38,6 +47,13 @@ export async function PATCH(req: NextRequest) {
   }
   const body = await req.json();
   const { id, ...data } = body;
+
+  // 確認此時段屬於該管理員的租戶
+  const existing = await prisma.timeSlot.findUnique({ where: { id } });
+  if (!existing || existing.tenantId !== session.user.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const slot = await prisma.timeSlot.update({ where: { id }, data });
   return NextResponse.json(slot);
 }
@@ -51,6 +67,12 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "缺少 id" }, { status: 400 });
+
+  // 確認此時段屬於該管理員的租戶
+  const existing = await prisma.timeSlot.findUnique({ where: { id } });
+  if (!existing || existing.tenantId !== session.user.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // 有未完成預約則不允許刪除
   const active = await prisma.reservation.count({

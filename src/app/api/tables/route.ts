@@ -4,12 +4,17 @@ import { prisma } from "@/lib/prisma";
 import { startOfDay, endOfDay } from "@/lib/date";
 
 export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session || !session.user.tenantId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
   const timeSlotId = searchParams.get("timeSlotId");
 
   const tables = await prisma.table.findMany({
-    where: { isActive: true },
+    where: { tenantId: session.user.tenantId, isActive: true },
     orderBy: { order: "asc" },
   });
 
@@ -17,10 +22,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(tables);
   }
 
-  // Get reservations for this date/timeslot to show availability
   const d = new Date(date);
   const reservations = await prisma.reservation.findMany({
     where: {
+      tenantId: session.user.tenantId,
       timeSlotId,
       date: { gte: startOfDay(d), lte: endOfDay(d) },
       status: { in: ["pending", "confirmed", "checked_in"] },
@@ -29,12 +34,7 @@ export async function GET(req: NextRequest) {
 
   const takenTableIds = new Set(reservations.map((r) => r.tableId));
 
-  const tablesWithAvailability = tables.map((t) => ({
-    ...t,
-    isAvailable: !takenTableIds.has(t.id),
-  }));
-
-  return NextResponse.json(tablesWithAvailability);
+  return NextResponse.json(tables.map((t) => ({ ...t, isAvailable: !takenTableIds.has(t.id) })));
 }
 
 export async function POST(req: NextRequest) {
@@ -53,14 +53,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "請指定空間" }, { status: 400 });
   }
 
-  const count = await prisma.table.count({ where: { floorId } });
+  const count = await prisma.table.count({ where: { floorId, tenantId: session.user.tenantId } });
   const table = await prisma.table.create({
     data: {
       name: name.trim(),
       floorId,
       capacity,
       order: order ?? count,
-      tenantId: session.user.tenantId ?? "default",
+      tenantId: session.user.tenantId,
     },
   });
   return NextResponse.json(table, { status: 201 });
@@ -76,7 +76,11 @@ export async function DELETE(req: NextRequest) {
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "缺少 id" }, { status: 400 });
 
-  // Check for active reservations
+  const existing = await prisma.table.findUnique({ where: { id } });
+  if (!existing || existing.tenantId !== session.user.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const active = await prisma.reservation.count({
     where: { tableId: id, status: { in: ["pending", "confirmed", "checked_in"] } },
   });
@@ -96,6 +100,12 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json();
   const { id, ...data } = body;
+
+  const existing = await prisma.table.findUnique({ where: { id } });
+  if (!existing || existing.tenantId !== session.user.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const table = await prisma.table.update({ where: { id }, data });
   return NextResponse.json(table);
 }
