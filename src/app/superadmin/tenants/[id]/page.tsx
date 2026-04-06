@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Users, CalendarCheck } from "lucide-react";
+import { ArrowLeft, Users, CalendarCheck, AlertTriangle } from "lucide-react";
 
 interface TenantDetail {
   id: string;
@@ -17,6 +17,102 @@ interface TenantDetail {
   plan: string;
   createdAt: string;
   _count: { users: number; reservations: number };
+}
+
+type ConfirmAction = "delete" | "suspend" | "resume" | "seed" | null;
+
+interface ConfirmModalProps {
+  action: ConfirmAction;
+  tenantName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}
+
+const ACTION_CONFIG: Record<
+  NonNullable<ConfirmAction>,
+  { title: string; description: (name: string) => string; buttonLabel: string; buttonColor: string }
+> = {
+  delete: {
+    title: "永久刪除租戶",
+    description: (name) => `確定要永久刪除「${name}」？此操作無法復原，所有用戶、預約與資料將一併刪除。`,
+    buttonLabel: "確認永久刪除",
+    buttonColor: "#DC2626",
+  },
+  suspend: {
+    title: "暫停服務",
+    description: (name) => `確定要暫停「${name}」的服務？暫停後該館所有用戶將無法登入或預約。`,
+    buttonLabel: "確認暫停",
+    buttonColor: "#D97706",
+  },
+  resume: {
+    title: "恢復服務",
+    description: (name) => `確定要恢復「${name}」的服務？`,
+    buttonLabel: "確認恢復",
+    buttonColor: "#16A34A",
+  },
+  seed: {
+    title: "一鍵初始化預設資料",
+    description: (name) => `確定要為「${name}」初始化預設資料？這將新增示範會員、桌位、時段與預約記錄。`,
+    buttonLabel: "確認初始化",
+    buttonColor: "#3949AB",
+  },
+};
+
+function ConfirmModal({ action, tenantName, onConfirm, onCancel, loading }: ConfirmModalProps) {
+  const [input, setInput] = useState("");
+  if (!action) return null;
+  const config = ACTION_CONFIG[action];
+  const isValid = input.trim().toLowerCase() === "confirm";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#FEF3C7" }}>
+            <AlertTriangle className="w-5 h-5" style={{ color: "#D97706" }} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{config.title}</h3>
+            <p className="text-sm text-gray-500 mt-1 leading-relaxed">{config.description(tenantName)}</p>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-gray-500">
+            請輸入 <span className="font-mono font-bold text-gray-800">confirm</span> 以繼續
+          </label>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="confirm"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === "Enter" && isValid && !loading) onConfirm(); }}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onConfirm}
+            disabled={!isValid || loading}
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: isValid ? config.buttonColor : "#9CA3AF" }}
+          >
+            {loading ? "處理中..." : config.buttonLabel}
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2.5 rounded-xl text-sm text-gray-600 border border-gray-200 hover:bg-gray-50 transition-all"
+          >
+            取消
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function EditTenantPage() {
@@ -36,12 +132,10 @@ export default function EditTenantPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [seedLoading, setSeedLoading] = useState(false);
-  const [seedDone, setSeedDone] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [monthlyStats, setMonthlyStats] = useState<{ label: string; count: number }[]>([]);
 
   const fetchTenant = useCallback(() => {
@@ -102,65 +196,48 @@ export default function EditTenantPage() {
     }
   }
 
-  async function handleToggleActive() {
-    setError("");
-    const newActive = !form.isActive;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/superadmin/tenants/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: newActive }),
-      });
-      if (res.ok) {
-        set("isActive", newActive);
-        setSuccess(newActive ? "服務已恢復" : "服務已暫停");
-        setTimeout(() => setSuccess(""), 3000);
-      }
-    } catch {
-      setError("操作失敗");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    setDeleteLoading(true);
+  async function executeAction(action: ConfirmAction) {
+    if (!action) return;
+    setActionLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/superadmin/tenants/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        router.push("/superadmin/tenants");
-      } else {
+      if (action === "delete") {
+        const res = await fetch(`/api/superadmin/tenants/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          router.push("/superadmin/tenants");
+          return;
+        }
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? "刪除失敗");
-        setDeleteConfirm(false);
+      } else if (action === "suspend" || action === "resume") {
+        const newActive = action === "resume";
+        const res = await fetch(`/api/superadmin/tenants/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: newActive }),
+        });
+        if (res.ok) {
+          set("isActive", newActive);
+          setSuccess(newActive ? "服務已恢復" : "服務已暫停");
+          setTimeout(() => setSuccess(""), 3000);
+        } else {
+          setError("操作失敗");
+        }
+      } else if (action === "seed") {
+        const res = await fetch(`/api/superadmin/tenants/${id}/seed`, { method: "POST" });
+        if (res.ok) {
+          setSuccess("初始化完成");
+          setTimeout(() => setSuccess(""), 3000);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setError(data.error ?? "初始化失敗");
+        }
       }
     } catch {
       setError("網路錯誤");
-      setDeleteConfirm(false);
     } finally {
-      setDeleteLoading(false);
-    }
-  }
-
-  async function handleSeed() {
-    setSeedLoading(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/superadmin/tenants/${id}/seed`, { method: "POST" });
-      if (res.ok) {
-        setSeedDone(true);
-        setSuccess("初始化完成");
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        const data = await res.json();
-        setError(data.error ?? "初始化失敗");
-      }
-    } catch {
-      setError("初始化失敗");
-    } finally {
-      setSeedLoading(false);
+      setActionLoading(false);
+      setConfirmAction(null);
     }
   }
 
@@ -204,353 +281,307 @@ export default function EditTenantPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          href="/superadmin/tenants"
-          className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-indigo-100"
-          style={{ color: "#3949AB" }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold tracking-wide truncate" style={{ color: "#1A237E" }}>
-            {tenant?.name}
-          </h1>
-          <p className="text-sm mt-0.5" style={{ color: "rgba(57,73,171,0.5)" }}>
-            建立於 {tenant ? new Date(tenant.createdAt).toLocaleDateString("zh-TW") : ""}
-          </p>
-        </div>
-      </div>
+    <>
+      {confirmAction && (
+        <ConfirmModal
+          action={confirmAction}
+          tenantName={tenant?.name ?? ""}
+          onConfirm={() => executeAction(confirmAction)}
+          onCancel={() => setConfirmAction(null)}
+          loading={actionLoading}
+        />
+      )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <div
-          className="rounded-xl p-4 flex items-center gap-3"
-          style={{ background: "white", border: "1px solid rgba(57,73,171,0.12)" }}
-        >
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: "#EEF2FF" }}
+      <div className="p-6 max-w-2xl mx-auto space-y-5">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/superadmin/tenants"
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-indigo-100"
+            style={{ color: "#3949AB" }}
           >
-            <Users className="w-4 h-4" style={{ color: "#3949AB" }} />
-          </div>
-          <div>
-            <p className="text-xl font-bold" style={{ color: "#1A237E" }}>{tenant?._count.users}</p>
-            <p className="text-xs" style={{ color: "rgba(57,73,171,0.5)" }}>用戶數</p>
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-bold tracking-wide truncate" style={{ color: "#1A237E" }}>
+              {tenant?.name}
+            </h1>
+            <p className="text-sm mt-0.5" style={{ color: "rgba(57,73,171,0.5)" }}>
+              建立於 {tenant ? new Date(tenant.createdAt).toLocaleDateString("zh-TW") : ""}
+            </p>
           </div>
         </div>
-        <div
-          className="rounded-xl p-4 flex items-center gap-3"
-          style={{ background: "white", border: "1px solid rgba(57,73,171,0.12)" }}
-        >
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: "#EEF2FF" }}
-          >
-            <CalendarCheck className="w-4 h-4" style={{ color: "#3949AB" }} />
-          </div>
-          <div>
-            <p className="text-xl font-bold" style={{ color: "#1A237E" }}>{tenant?._count.reservations}</p>
-            <p className="text-xs" style={{ color: "rgba(57,73,171,0.5)" }}>總預約數</p>
-          </div>
-        </div>
-      </div>
 
-      {/* Monthly stats */}
-      {monthlyStats.length > 0 && (() => {
-        const maxCount = Math.max(...monthlyStats.map((m) => m.count), 1);
-        return (
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4">
           <div
-            className="rounded-2xl p-5 space-y-3"
+            className="rounded-xl p-4 flex items-center gap-3"
             style={{ background: "white", border: "1px solid rgba(57,73,171,0.12)" }}
           >
-            <p className="text-xs font-semibold" style={{ color: "rgba(26,35,126,0.5)", letterSpacing: "0.05em" }}>
-              近 6 個月預約量
-            </p>
-            <div className="space-y-2">
-              {monthlyStats.map((m) => (
-                <div key={m.label} className="flex items-center gap-3">
-                  <span className="text-xs w-8 flex-shrink-0 text-right" style={{ color: "rgba(57,73,171,0.5)" }}>
-                    {m.label}
-                  </span>
-                  <div className="flex-1 h-2 rounded-full" style={{ background: "#EEF2FF" }}>
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.round((m.count / maxCount) * 100)}%`,
-                        background: "linear-gradient(90deg, #3949AB, #7986CB)",
-                        minWidth: m.count > 0 ? "4px" : "0",
-                      }}
-                    />
-                  </div>
-                  <span
-                    className="text-xs font-semibold w-6 text-right flex-shrink-0"
-                    style={{ color: m.count > 0 ? "#3949AB" : "rgba(57,73,171,0.25)" }}
-                  >
-                    {m.count}
-                  </span>
-                </div>
-              ))}
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <Users className="w-4 h-4" style={{ color: "#3949AB" }} />
+            </div>
+            <div>
+              <p className="text-xl font-bold" style={{ color: "#1A237E" }}>{tenant?._count.users}</p>
+              <p className="text-xs" style={{ color: "rgba(57,73,171,0.5)" }}>用戶數</p>
             </div>
           </div>
-        );
-      })()}
-
-      {/* Actions */}
-      <div
-        className="rounded-2xl p-5 flex flex-wrap gap-3"
-        style={{ background: "white", border: "1px solid rgba(57,73,171,0.15)" }}
-      >
-        {tenant && (
-          <a
-            href={`/t/${tenant.slug}/admin`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-85"
-            style={{ background: "#DCFCE7", color: "#166534", border: "1px solid #BBF7D0" }}
+          <div
+            className="rounded-xl p-4 flex items-center gap-3"
+            style={{ background: "white", border: "1px solid rgba(57,73,171,0.12)" }}
           >
-            進入租戶後台 ↗
-          </a>
-        )}
-        <button
-          onClick={handleSeed}
-          disabled={seedLoading || seedDone}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
-          style={{
-            background: seedDone
-              ? "#DCFCE7"
-              : seedLoading
-              ? "rgba(57,73,171,0.3)"
-              : "#EEF2FF",
-            color: seedDone ? "#166534" : "#3949AB",
-            border: "1px solid",
-            borderColor: seedDone ? "#BBF7D0" : "rgba(57,73,171,0.2)",
-            cursor: seedLoading || seedDone ? "not-allowed" : "pointer",
-          }}
-        >
-          {seedLoading ? "初始化中..." : seedDone ? "已初始化" : "一鍵初始化預設資料"}
-        </button>
-
-        <button
-          onClick={handleToggleActive}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
-          style={{
-            background: form.isActive ? "#FEE2E2" : "#DCFCE7",
-            color: form.isActive ? "#991B1B" : "#166534",
-            border: `1px solid ${form.isActive ? "#FECACA" : "#BBF7D0"}`,
-            cursor: saving ? "not-allowed" : "pointer",
-          }}
-        >
-          {form.isActive ? "暫停服務" : "恢復服務"}
-        </button>
-      </div>
-
-      {/* Edit form */}
-      <form onSubmit={handleSave}>
-        <div
-          className="rounded-2xl p-6 space-y-5 shadow-sm"
-          style={{ background: "white", border: "1px solid rgba(57,73,171,0.15)" }}
-        >
-          <div>
-            <h3 className="text-sm font-semibold mb-4" style={{ color: "#1A237E" }}>
-              基本資料
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label style={labelStyle}>館名 *</label>
-                <input
-                  type="text"
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  required
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Slug *</label>
-                <input
-                  type="text"
-                  value={form.slug}
-                  onChange={(e) => set("slug", e.target.value)}
-                  required
-                  pattern="[a-z0-9-]+"
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>方案</label>
-                <select
-                  value={form.plan}
-                  onChange={(e) => set("plan", e.target.value)}
-                  style={{ ...inputStyle, cursor: "pointer" }}
-                >
-                  <option value="basic">基本</option>
-                  <option value="pro">專業</option>
-                  <option value="enterprise">企業</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-3 pt-5">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={form.isActive}
-                    onChange={(e) => set("isActive", e.target.checked)}
-                  />
-                  <div
-                    className="w-10 h-5 rounded-full transition-colors peer-checked:bg-blue-600 bg-gray-300 peer-focus:ring-2 peer-focus:ring-blue-300"
-                  />
-                  <div
-                    className="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"
-                  />
-                </label>
-                <span className="text-sm" style={{ color: "rgba(57,73,171,0.7)" }}>
-                  {form.isActive ? "啟用" : "停用"}
-                </span>
-              </div>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "#EEF2FF" }}>
+              <CalendarCheck className="w-4 h-4" style={{ color: "#3949AB" }} />
             </div>
-          </div>
-
-          <div style={{ height: "1px", background: "rgba(57,73,171,0.08)" }} />
-
-          <div>
-            <h3 className="text-sm font-semibold mb-4" style={{ color: "#1A237E" }}>
-              LINE 設定
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label style={labelStyle}>LINE Channel ID</label>
-                <input
-                  type="text"
-                  value={form.lineChannelId}
-                  onChange={(e) => set("lineChannelId", e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>LINE Channel Secret</label>
-                <input
-                  type="text"
-                  value={form.lineChannelSecret}
-                  onChange={(e) => set("lineChannelSecret", e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>LINE Messaging Token</label>
-                <input
-                  type="text"
-                  value={form.lineMessagingToken}
-                  onChange={(e) => set("lineMessagingToken", e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>LINE LIFF ID</label>
-                <input
-                  type="text"
-                  value={form.lineLiffId}
-                  onChange={(e) => set("lineLiffId", e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
+            <div>
+              <p className="text-xl font-bold" style={{ color: "#1A237E" }}>{tenant?._count.reservations}</p>
+              <p className="text-xs" style={{ color: "rgba(57,73,171,0.5)" }}>總預約數</p>
             </div>
-          </div>
-
-          {error && (
-            <div
-              className="px-4 py-2.5 rounded-xl text-sm"
-              style={{
-                background: "rgba(220,38,38,0.08)",
-                color: "#DC2626",
-                border: "1px solid rgba(220,38,38,0.15)",
-              }}
-            >
-              {error}
-            </div>
-          )}
-          {success && (
-            <div
-              className="px-4 py-2.5 rounded-xl text-sm"
-              style={{
-                background: "#DCFCE7",
-                color: "#166534",
-                border: "1px solid #BBF7D0",
-              }}
-            >
-              {success}
-            </div>
-          )}
-
-          <div className="flex gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all"
-              style={{
-                background: saving
-                  ? "rgba(57,73,171,0.4)"
-                  : "linear-gradient(135deg, #3949AB, #1A237E)",
-                color: "#fff",
-                cursor: saving ? "not-allowed" : "pointer",
-                boxShadow: saving ? "none" : "0 4px 12px rgba(57,73,171,0.3)",
-              }}
-            >
-              {saving ? "儲存中..." : "儲存變更"}
-            </button>
-            <Link
-              href="/superadmin/tenants"
-              className="px-5 py-3 rounded-xl text-sm font-medium transition-all hover:bg-indigo-50"
-              style={{ color: "#3949AB", border: "1px solid rgba(57,73,171,0.2)" }}
-            >
-              取消
-            </Link>
           </div>
         </div>
-      </form>
 
-      {/* Danger Zone */}
-      <div
-        className="rounded-2xl p-5 space-y-3"
-        style={{ border: "1px solid rgba(220,38,38,0.2)", background: "#FFF5F5" }}
-      >
-        <h3 className="text-sm font-semibold" style={{ color: "#991B1B" }}>危險操作</h3>
-        {!deleteConfirm ? (
+        {/* Monthly stats */}
+        {monthlyStats.length > 0 && (() => {
+          const maxCount = Math.max(...monthlyStats.map((m) => m.count), 1);
+          return (
+            <div
+              className="rounded-2xl p-5 space-y-3"
+              style={{ background: "white", border: "1px solid rgba(57,73,171,0.12)" }}
+            >
+              <p className="text-xs font-semibold" style={{ color: "rgba(26,35,126,0.5)", letterSpacing: "0.05em" }}>
+                近 6 個月預約量
+              </p>
+              <div className="space-y-2">
+                {monthlyStats.map((m) => (
+                  <div key={m.label} className="flex items-center gap-3">
+                    <span className="text-xs w-8 flex-shrink-0 text-right" style={{ color: "rgba(57,73,171,0.5)" }}>
+                      {m.label}
+                    </span>
+                    <div className="flex-1 h-2 rounded-full" style={{ background: "#EEF2FF" }}>
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.round((m.count / maxCount) * 100)}%`,
+                          background: "linear-gradient(90deg, #3949AB, #7986CB)",
+                          minWidth: m.count > 0 ? "4px" : "0",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className="text-xs font-semibold w-6 text-right flex-shrink-0"
+                      style={{ color: m.count > 0 ? "#3949AB" : "rgba(57,73,171,0.25)" }}
+                    >
+                      {m.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Actions */}
+        <div
+          className="rounded-2xl p-5 flex flex-wrap gap-3"
+          style={{ background: "white", border: "1px solid rgba(57,73,171,0.15)" }}
+        >
+          {tenant && (
+            <a
+              href={`/t/${tenant.slug}/admin`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-85"
+              style={{ background: "#DCFCE7", color: "#166534", border: "1px solid #BBF7D0" }}
+            >
+              進入租戶後台 ↗
+            </a>
+          )}
           <button
-            onClick={() => setDeleteConfirm(true)}
+            onClick={() => setConfirmAction("seed")}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-85"
+            style={{ background: "#EEF2FF", color: "#3949AB", border: "1px solid rgba(57,73,171,0.2)" }}
+          >
+            一鍵初始化預設資料
+          </button>
+          <button
+            onClick={() => setConfirmAction(form.isActive ? "suspend" : "resume")}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-85"
+            style={{
+              background: form.isActive ? "#FEE2E2" : "#DCFCE7",
+              color: form.isActive ? "#991B1B" : "#166534",
+              border: `1px solid ${form.isActive ? "#FECACA" : "#BBF7D0"}`,
+            }}
+          >
+            {form.isActive ? "暫停服務" : "恢復服務"}
+          </button>
+        </div>
+
+        {/* Edit form */}
+        <form onSubmit={handleSave}>
+          <div
+            className="rounded-2xl p-6 space-y-5 shadow-sm"
+            style={{ background: "white", border: "1px solid rgba(57,73,171,0.15)" }}
+          >
+            <div>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: "#1A237E" }}>
+                基本資料
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>館名 *</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    required
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Slug *</label>
+                  <input
+                    type="text"
+                    value={form.slug}
+                    onChange={(e) => set("slug", e.target.value)}
+                    required
+                    pattern="[a-z0-9-]+"
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>方案</label>
+                  <select
+                    value={form.plan}
+                    onChange={(e) => set("plan", e.target.value)}
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                  >
+                    <option value="basic">基本</option>
+                    <option value="pro">專業</option>
+                    <option value="enterprise">企業</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-3 pt-5">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={form.isActive}
+                      onChange={(e) => set("isActive", e.target.checked)}
+                    />
+                    <div className="w-10 h-5 rounded-full transition-colors peer-checked:bg-blue-600 bg-gray-300 peer-focus:ring-2 peer-focus:ring-blue-300" />
+                    <div className="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+                  </label>
+                  <span className="text-sm" style={{ color: "rgba(57,73,171,0.7)" }}>
+                    {form.isActive ? "啟用" : "停用"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: "1px", background: "rgba(57,73,171,0.08)" }} />
+
+            <div>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: "#1A237E" }}>
+                LINE 設定
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>LINE Channel ID</label>
+                  <input
+                    type="text"
+                    value={form.lineChannelId}
+                    onChange={(e) => set("lineChannelId", e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>LINE Channel Secret</label>
+                  <input
+                    type="text"
+                    value={form.lineChannelSecret}
+                    onChange={(e) => set("lineChannelSecret", e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>LINE Messaging Token</label>
+                  <input
+                    type="text"
+                    value={form.lineMessagingToken}
+                    onChange={(e) => set("lineMessagingToken", e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>LINE LIFF ID</label>
+                  <input
+                    type="text"
+                    value={form.lineLiffId}
+                    onChange={(e) => set("lineLiffId", e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {error && (
+              <div
+                className="px-4 py-2.5 rounded-xl text-sm"
+                style={{ background: "rgba(220,38,38,0.08)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.15)" }}
+              >
+                {error}
+              </div>
+            )}
+            {success && (
+              <div
+                className="px-4 py-2.5 rounded-xl text-sm"
+                style={{ background: "#DCFCE7", color: "#166534", border: "1px solid #BBF7D0" }}
+              >
+                {success}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all"
+                style={{
+                  background: saving ? "rgba(57,73,171,0.4)" : "linear-gradient(135deg, #3949AB, #1A237E)",
+                  color: "#fff",
+                  cursor: saving ? "not-allowed" : "pointer",
+                  boxShadow: saving ? "none" : "0 4px 12px rgba(57,73,171,0.3)",
+                }}
+              >
+                {saving ? "儲存中..." : "儲存變更"}
+              </button>
+              <Link
+                href="/superadmin/tenants"
+                className="px-5 py-3 rounded-xl text-sm font-medium transition-all hover:bg-indigo-50"
+                style={{ color: "#3949AB", border: "1px solid rgba(57,73,171,0.2)" }}
+              >
+                取消
+              </Link>
+            </div>
+          </div>
+        </form>
+
+        {/* Danger Zone */}
+        <div
+          className="rounded-2xl p-5 space-y-3"
+          style={{ border: "1px solid rgba(220,38,38,0.2)", background: "#FFF5F5" }}
+        >
+          <h3 className="text-sm font-semibold" style={{ color: "#991B1B" }}>危險操作</h3>
+          <p className="text-xs" style={{ color: "#B91C1C" }}>以下操作需輸入 confirm 確認後才能執行。</p>
+          <button
+            onClick={() => setConfirmAction("delete")}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-all hover:opacity-85"
             style={{ background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA" }}
           >
             刪除此租戶
           </button>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm" style={{ color: "#991B1B" }}>
-              確定要永久刪除「{tenant?.name}」？此操作無法復原，所有用戶、預約與資料將一併刪除。
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={handleDelete}
-                disabled={deleteLoading}
-                className="px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-60 transition-all"
-                style={{ background: "#DC2626", color: "#fff" }}
-              >
-                {deleteLoading ? "刪除中…" : "確認永久刪除"}
-              </button>
-              <button
-                onClick={() => setDeleteConfirm(false)}
-                className="px-4 py-2 rounded-xl text-sm transition-all hover:bg-gray-100"
-                style={{ color: "#6B7280", border: "1px solid #E5E7EB" }}
-              >
-                取消
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
