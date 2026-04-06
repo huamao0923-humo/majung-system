@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/superadmin-auth";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { Prisma } from "@prisma/client";
 import ReservationFilters from "./reservation-filters";
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +51,7 @@ export default async function SuperAdminReservationsPage({
   const { dateRange, tenantId, status } = await searchParams;
 
   const dateFilter = getDateRange(dateRange);
-  const where: Parameters<typeof prisma.reservation.findMany>[0]["where"] = {};
+  const where: Prisma.ReservationWhereInput = {};
   if (Object.keys(dateFilter).length > 0) where.date = dateFilter;
   if (tenantId) where.tenantId = tenantId;
   if (status) where.status = status;
